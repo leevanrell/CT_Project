@@ -36,25 +36,25 @@ def getCellTowers():
     # Reads in Sim900 output
     SIM_Output = ''
     while SIM_Serial.inWaiting() > 0:
-        SIM_output += SIM_Serial.read(1) 
+        SIM_Output += SIM_Serial.read(1) 
     
     SIM_Serial.close()
 
     # Removes Excess Lines and packs into array
-    SIM_output = SIM_output.split('\n')
-    SIM_output = SIM_output[4:11]
+    SIM_Output = SIM_Output.split('\n')
+    SIM_Output = SIM_Output[4:11]
 
-    return SIM_output
+    return SIM_Output
 
 def getLocation():
     GPS_Serial.open()
 
     GPS_Output = ''
 
-    while !isValidLocation(SIM_output) {
-        GPS_Output = GPS Serial.readline()
-        print Output
-    }
+    while isValidLocation(SIM_Output) == False :
+        GPS_Output = GPS_Serial.readline()
+        print GPS_Output
+    
     GPS_Output = GPS_Output.split(',')
     return GPS_Output
 
