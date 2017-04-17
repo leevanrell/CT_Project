@@ -8,8 +8,9 @@ import os
 # Sets to Engineering mode     
 def setup_Sim900():
 
-    if ser.isOpen() == False:
+    if SIM_ser.isOpen() == False:
         print "Port Failed to Open"
+        quit()
 
     # AT+CENG=<mode>.<Ncell> : mode = switch on engineering mode, Ncell = display neighbor cell ID
     SIM_Serial.write('AT+CENG=1,1' + '\r\n')
@@ -21,7 +22,7 @@ def setup_Sim900():
 
 
 # Returns Array of Strings
-# Each string represents a cell tower and contains the cell tower's information
+# Each string represents a cell tower and contains the cell tower's Metadata
 def getCellTowers():
     
     SIM_Serial.open()
@@ -33,19 +34,33 @@ def getCellTowers():
     time.sleep(.5) 
 
     # Reads in Sim900 output
-    output = ''
+    SIM_Output = ''
     while SIM_Serial.inWaiting() > 0:
-        output += SIM_Serial.read(1) 
+        SIM_output += SIM_Serial.read(1) 
+    
     SIM_Serial.close()
 
     # Removes Excess Lines and packs into array
-    output = output.split('\n')
-    output = output[4:11]
+    SIM_output = SIM_output.split('\n')
+    SIM_output = SIM_output[4:11]
 
-    SIM_Serial.close()
+    return SIM_output
 
-    return output
+def getLocation():
+    GPS_Serial.open()
 
+    GPS_Output = ''
+
+    while !isValidLocation(SIM_output) {
+        GPS_Output = GPS Serial.readline()
+        print Output
+    }
+    GPS_Output = GPS_Output.split(',')
+    return GPS_Output
+
+def isValidLocation(output):
+    check = output.split(',')
+    return (output[6] == 1 || output[6] == 2);
 
 def main():
     #Creates DB for towers and Gps coords
@@ -77,8 +92,17 @@ def main():
         timeout=0
     )
 
+    GPS_Serial = serial.Serial(
+        port='/dev/ttyUSB1',
+        baudrate=9600,
+        parity=serial.PARITY_NONE,
+        stopbits=serial.STOPBITS_ONE,
+        bytesize=serial.EIGHTBITS,
+        timeout=0
+    )
 
- 
+    location = getLocation();
+
     '''
     
     setup_Sim900()
@@ -90,27 +114,27 @@ def main():
        
         # Data in first (serving) cell is ordered differently than first cell,
         # +CENG:0, "<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>"
-        s = cell_towers[i]
-        s = s.split(',')
+        cell = cell_towers[i]
+        cell = s.split(',')
 
         if(i == 0):
-            arfcn = s[1]
-            rxl = s[2]
-            bsic = s[6]
-            cellid = s[7]
-            mcc = s[4]
-            mnc = s[5]
-            lac = s[10]
+            arfcn = cell[1]
+            rxl = cell[2]
+            bsic = cell[6]
+            cellid = cell[7]
+            mcc = cell[4]
+            mnc = cell[5]
+            lac = cell[10]
 
         # +CENG:1+,"<arfcn>, <rxl>, <bsic>, <cellid>, <mcc>, <mnc>, <lac>"    
         else:
-            arfcn = s[1]
-            rxl = s[2]
-            bsic = s[3]
-            cellid = s[4]
-            mcc = s[5]
-            mnc = s[6]
-            lac = s[7]
+            arfcn = cell[1]
+            rxl = cell[2]
+            bsic = cell[3]
+            cellid = cell[4]
+            mcc = cell[5]
+            mnc = cell[6]
+            lac = cell[7]
         # put into Sql table
     '''
 
