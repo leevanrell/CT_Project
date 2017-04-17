@@ -4,6 +4,24 @@ import sqlite3
 import gps
 import os
 
+SIM_Serial = serial.Serial(
+    port='/dev/ttyUSB0',
+    baudrate=9600,
+    parity=serial.PARITY_NONE,
+    stopbits=serial.STOPBITS_ONE,
+    bytesize=serial.EIGHTBITS,
+    timeout=0
+)
+
+GPS_Serial = serial.Serial(
+    port='/dev/ttyUSB1',
+    baudrate=9600,
+    parity=serial.PARITY_NONE,
+    stopbits=serial.STOPBITS_ONE,
+    bytesize=serial.EIGHTBITS,
+    timeout=0
+)
+
 # Configures Sim900 
 # Sets to Engineering mode     
 def setup_Sim900():
@@ -48,20 +66,24 @@ def getCellTowers():
 
 def getLocation():
     GPS_Serial.open()
+    time.sleep(.5)
 
     GPS_Output = ''
-
-    while isValidLocation(SIM_Output) == False :
+    while isValidLocation(GPS_Output) == False :
         GPS_Output = GPS_Serial.readline()
         print GPS_Output
     
+    GPS_Serial.close()
+
     GPS_Output = GPS_Output.split(',')
     return GPS_Output
 
 def isValidLocation(output):
     check = output.split(',')
-    return (output[6] == 1 || output[6] == 2);
-
+    if(output[0] == "$GPGGA"):
+        return output[6] == 1 or output[6] == 2;
+    else:
+        return False;
 def main():
     #Creates DB for towers and Gps coords
     conn = sqlite3.connect('celltowers.db')
@@ -83,23 +105,8 @@ def main():
         );''')
     conn.commit()
 
-    SIM_Serial = serial.Serial(
-        port='/dev/ttyUSB0',
-        baudrate=9600,
-        parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
-        bytesize=serial.EIGHTBITS,
-        timeout=0
-    )
+    GPS_Serial.close()
 
-    GPS_Serial = serial.Serial(
-        port='/dev/ttyUSB1',
-        baudrate=9600,
-        parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
-        bytesize=serial.EIGHTBITS,
-        timeout=0
-    )
 
     location = getLocation();
 
