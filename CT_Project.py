@@ -54,7 +54,7 @@ def getCellTowers():
     # Reads in Sim900 output
     SIM_Output = ''
     while SIM_Serial.inWaiting() > 0:
-        SIM_Output += SIM_Serial.read(1) 
+        SIM_Output += SIM_Serial.read(6) 
     
     SIM_Serial.close()
 
@@ -64,26 +64,28 @@ def getCellTowers():
 
     return SIM_Output
 
+#Returns an String
 def getLocation():
     GPS_Serial.open()
-    time.sleep(.5)
 
     GPS_Output = ''
-    while isValidLocation(GPS_Output) == False :
+    while isValidLocation(GPS_Output) == False:
         GPS_Output = GPS_Serial.readline()
         print GPS_Output
+        time.sleep(.5)
     
     GPS_Serial.close()
 
-    GPS_Output = GPS_Output.split(',')
     return GPS_Output
 
 def isValidLocation(output):
+    if(len(output) == 0):
+        return False
     check = output.split(',')
     if(output[0] == "$GPGGA"):
-        return output[6] == 1 or output[6] == 2;
+        return output[6] == 1 or output[6] == 2
     else:
-        return False;
+        return False
 def main():
     #Creates DB for towers and Gps coords
     conn = sqlite3.connect('celltowers.db')
