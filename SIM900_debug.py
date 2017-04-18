@@ -1,12 +1,15 @@
 # Creates User interface for playing around with Sim900
-# For Debugging
+# For Debuggin
+import serial
+import time
+
 def main():
     ser = serial.Serial(
         port='/dev/ttyUSB0',
         baudrate=9600,
         parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE,
-        bytesize=serial.EIGHTBITS,
+        stopbits=serial.STOPBITS_ONE
+,        bytesize=serial.EIGHTBITS,
         timeout=0
     )
 
