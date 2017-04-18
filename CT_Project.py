@@ -120,9 +120,9 @@ def main():
             else:
                 lon = float(ocation[4]) * -1
             
-            satellites = location[7]
-            gps_quality = location[6]
-            altitude = location[8]
+            satellites = int(location[7])
+            gps_quality = int(location[6])
+            altitude = int(floatlocation[8])
             altitude_units = location[9]
             
             # Gets Array of Cell tower data
@@ -140,7 +140,7 @@ def main():
                   
                 if(i == 0):
                     bsic = int(cell[6])     # Base station identity code
-                    Cell_ID = int(cell[7])  # Unique Identifier
+                    Cell_ID = cell[7]       # Unique Identifier
                     MCC = int(cell[4])      # Mobile Country Code
                     MNC = int(cell[5])      # Mobile Network Code
                     LAC = int(cell[10])     # Location Area code
@@ -148,7 +148,7 @@ def main():
                 # +CENG:1+,"<arfcn>, <rxl>, <bsic>, <cellid>, <mcc>, <mnc>, <lac>"    
                 else:
                     bsic = int(cell[3])     # Base station identity code
-                    Cell_ID = int(cell[4])  # Unique Identifier
+                    Cell_ID = cell[4]       # Unique Identifier
                     MCC = int(cell[5])      # Mobile Country Code
                     MNC = int(cell[6])      # Mobile Network Code
                     LAC = int(cell[7])      # Location Area code
