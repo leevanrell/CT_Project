@@ -2,10 +2,9 @@ import serial
 import time
 
 def isValidLocation(output):
+    # $GPGGA,195718.000,3236.3567,N,08529.2146,W,1,05,1.47,180.6,M,-29.4,M,,*53
     check = output.split(',')
-    # We only want GPGGA sentences;
-    # Checks to see if we have a fix; 1 is fix, 2 is a differential fix.
-    return len(output) == 0 and check[0] == "$GPGGA" and (int(check[6]) == 2 or int(check[6]) == 1)
+    return len(output) == 0 and check[0] == "$GPGGA" and int(check[6]) == 2
 
 
 

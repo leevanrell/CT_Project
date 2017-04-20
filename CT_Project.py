@@ -119,7 +119,7 @@ def main():
                     Cell_ID = cell[7]       # Unique Identifier
                     MCC = int(cell[4])      # Mobile Country Code
                     MNC = int(cell[5])      # Mobile Network Code
-                    LAC = cell[10]    # Location Area code
+                    LAC = cell[10]          # Location Area code
 
                 # +CENG:1+,"<arfcn>, <rxl>, <bsic>, <cellid>, <mcc>, <mnc>, <lac>"    
                 else:
@@ -127,7 +127,7 @@ def main():
                     Cell_ID = cell[4]       # Unique Identifier
                     MCC = int(cell[5])      # Mobile Country Code
                     MNC = int(cell[6])      # Mobile Network Code
-                    LAC = cell[7]     # Location Area code
+                    LAC = cell[7][:-1]      # Location Area code
 
                 # Adds Cell Tower info along with GPS info
                 cursor.execute("INSERT INTO CellTowerData(t, arfcn, rxl, bsic, Cell_ID, MCC, MNC, LAC, lat, lon, satellites, gps_quality, altitude, altitude_units) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
