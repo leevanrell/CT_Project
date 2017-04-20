@@ -2,13 +2,12 @@ import serial
 import time
 
 def isValidLocation(output):
-    if(len(output) == 0):
-        return False
-
     check = output.split(',')
     # We only want GPGGA sentences;
     # Checks to see if we have a fix; 1 is fix, 2 is a differential fix.
-    return check[0] == "$GPGGA" and int(check[6]) == 2
+    return len(output) == 0 and check[0] == "$GPGGA" and (int(check[6]) == 2 or int(check[6]) == 1)
+
+
 
 def main():
     ser = serial.Serial(

@@ -7,36 +7,30 @@ import os
 # Configures Sim900 
 # Sets to Engineering mode     
 def setup_SIM():
-
+    
     SIM_Serial.open()
-
+    
     # AT+CENG=<mode>.<Ncell> : mode = switch on engineering mode, Ncell = display neighbor cell ID
     SIM_Serial.write('AT+CENG=1,1' + '\r\n')
-
-    # Need to wait for device to receive commands
-    time.sleep(.5) 
-
+    time.sleep(.5) # Need to wait for device to receive commands
+    
     SIM_Serial.close()
-
 
 # Returns Array of Strings
 # Each string represents a cell tower and contains the cell tower's Metadata
 def getCellTowers():
-    
-    SIM_Serial.open()
 
+    SIM_Serial.open()
+    
     # Displays current engineering mode settings, serving cell and neighboring cells
     # We only care about the serving cell and neighboring cell data; We'll cut the res
     SIM_Serial.write('AT+CENG?' + '\r\n')
-    
-    # Need to wait for device to receive commands
-    time.sleep(.5) 
+    time.sleep(.5) # Need to wait for device to receive commands 
 
     # Reads in Sim900 output
     SIM_Output = ''
     while SIM_Serial.inWaiting() > 0:
         SIM_Output += SIM_Serial.read(6) 
-    
     SIM_Serial.close()
 
     # Removes Excess Lines and packs into array
@@ -52,10 +46,8 @@ def getLocation():
 
     GPS_Output = GPS_Serial.readline()
     while isValidLocation(GPS_Output) == False:
-        time.sleep(.5) # Need to wait before collecting data
+        time.sleep(.4) # Need to wait before collecting data
         GPS_Output = GPS_Serial.readline()
-        print GPS_Output # This is just for debugging
-    
     GPS_Serial.close()
 
     return GPS_Output
@@ -63,34 +55,16 @@ def getLocation():
 # Returns bool 
 # Only returns true if output contains valid gps data
 def isValidLocation(output):
-    if(len(output) == 0):
-        return False
-
     check = output.split(',')
     # We only want GPGGA sentences;
     # Checks to see if we have a fix; 1 is fix, 2 is a differential fix.
-    return check[0] == "$GPGGA" and int(check[6]) == 2
+    return len(output) == 0 and check[0] == "$GPGGA" and (int(check[6]) == 2 or int(check[6]) == 1)
 
 def main():
     #Creates DB for towers and GPS coords
     conn = sqlite3.connect('celltowers.db')
     cursor = conn.cursor() 
-    cursor.execute('''CREATE TABLE IF NOT EXISTS CellTowerData(
-        t text, 
-        arfcn integer, 
-        rxl integer,
-        bsic integer,
-        Cell_ID text, 
-        MCC integer,
-        MNC integer,
-        LAC integer,
-        lat real,
-        lon real,
-        satellites integer, 
-        gps_quality integer, 
-        altitude integer,
-        altitude_units text
-        );''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS CellTowerData(t text, arfcn integer, rxl integer, bsic integer, Cell_ID text, MCC integer, MNC integer, LAC text, lat real, lon real, satellites integer, gps_quality integer, altitude real, altitude_units text);''')
     conn.commit()
 
     # Configures SIM module to output Cell Tower Meta Data
@@ -102,6 +76,7 @@ def main():
             # Gets Location data.
             # $GPGGA, time, lat, N or S, lon, E or W, Quality Indicator, No. of Satellites, 
             # Precision, Altitude, Units, Separation, Units, Age, Differential reference station ID, 
+            
             location = getLocation()
             location = location.split(',')
 
@@ -118,12 +93,13 @@ def main():
             if(location[5] == 'E'):
                 lon = float(location[4])
             else:
-                lon = float(ocation[4]) * -1
+                lon = float(location[4]) * -1
             
             satellites = int(location[7])
             gps_quality = int(location[6])
-            altitude = int(floatlocation[8])
+            altitude = float(location[8])
             altitude_units = location[9]
+            
             
             # Gets Array of Cell tower data
             # Each indices contains data on a single Tower
@@ -133,9 +109,9 @@ def main():
                 # Data in first (serving) cell is ordered differently than first cell,
                 # +CENG:0, "<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>"
                 cell = cell_towers[i]
-                cell = s.split(',')
+                cell = cell.split(',')
 
-                arfcn = int(cell[1])    # Absolute radio frequency channel number
+                arfcn = int(cell[1][1:])    # Absolute radio frequency channel number
                 rxl = int(cell[2])      # Receive level (signal stregnth)
                   
                 if(i == 0):
@@ -143,7 +119,7 @@ def main():
                     Cell_ID = cell[7]       # Unique Identifier
                     MCC = int(cell[4])      # Mobile Country Code
                     MNC = int(cell[5])      # Mobile Network Code
-                    LAC = int(cell[10])     # Location Area code
+                    LAC = cell[10]    # Location Area code
 
                 # +CENG:1+,"<arfcn>, <rxl>, <bsic>, <cellid>, <mcc>, <mnc>, <lac>"    
                 else:
@@ -151,21 +127,18 @@ def main():
                     Cell_ID = cell[4]       # Unique Identifier
                     MCC = int(cell[5])      # Mobile Country Code
                     MNC = int(cell[6])      # Mobile Network Code
-                    LAC = int(cell[7])      # Location Area code
+                    LAC = cell[7]     # Location Area code
 
                 # Adds Cell Tower info along with GPS info
-                cursor.execute('''INSERT INTO CellTowerData(t, arfcn, rxl, 
-                        bsic, Cell_ID, MCC, MNC, LAC, lat, lon, satellites,
-                        gps_quality, altitude, altitude_units) ''', (t, arfcn, rxl, 
-                        bsic, Cell_ID, MCC, MNC, LAC, lat, lon, satellites,
-                        gps_quality, altitude, altitude_units))
+                cursor.execute("INSERT INTO CellTowerData(t, arfcn, rxl, bsic, Cell_ID, MCC, MNC, LAC, lat, lon, satellites, gps_quality, altitude, altitude_units) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+                    (t, arfcn, rxl, bsic, Cell_ID, MCC, MNC, LAC, lat, lon, satellites, gps_quality, altitude, altitude_units))
                 conn.commit()
-                print "Added Entry to DataBase"
+                print "Added Entry to Database"
         
         # Loops until detects keyboard input
         except KeyboardInterrupt as e:
             print "Ending Program: "
-            go = False;
+            go = False
             continue
     conn.close()
 
@@ -173,14 +146,7 @@ if __name__ == "__main__":
     # Exception handling in case the devices aren't plugged in or the units get disconnected
     try:
         # Plug in the SIM unit first or the program won't work
-        SIM_Serial = serial.Serial(
-            port='/dev/ttyUSB0',
-            baudrate=9600,
-            parity=serial.PARITY_NONE,
-            stopbits=serial.STOPBITS_ONE,
-            bytesize=serial.EIGHTBITS,
-            timeout=0
-        )
+        SIM_Serial = serial.Serial(port='/dev/ttyUSB0', baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
         SIM_Serial.close()
     except serial.SerialException as e:
         print "SIM is not plugged in!"
@@ -189,14 +155,7 @@ if __name__ == "__main__":
 
     try:
         # Plug in the GPS unit last!
-        GPS_Serial = serial.Serial(
-            port='/dev/ttyUSB1',
-            baudrate=9600,
-            parity=serial.PARITY_NONE,
-            stopbits=serial.STOPBITS_ONE,
-            bytesize=serial.EIGHTBITS,
-            timeout=0
-        )
+        SIM_Serial = serial.Serial(port='/dev/ttyUSB1', baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
         GPS_Serial.close()
     except serial.SerialException as e:
         print "GPS is not plugged in!"
