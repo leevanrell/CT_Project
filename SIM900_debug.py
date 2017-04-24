@@ -4,36 +4,30 @@ import serial
 import time
 
 def main():
-    ser = serial.Serial(
+    SIM_Serial = serial.Serial(
         port='/dev/ttyUSB0',
-        baudrate=9600,
+        baudrate=115200,
         parity=serial.PARITY_NONE,
-        stopbits=serial.STOPBITS_ONE
-,        bytesize=serial.EIGHTBITS,
+        stopbits=serial.STOPBITS_ONE,        
+        bytesize=serial.EIGHTBITS,
         timeout=0
     )
 
-    if ser.isOpen() == False:
+    if SIM_Serial.isOpen() == False:
         print "Port Failed to Open"
 
-    input= ''
-    run = True
-    while run :
-        # get keyboard input
-        input = raw_input(">> ")
-        if input == 'exit':
-            ser.close()
-            run = False;
-        else:
-            # send the character to the device
-            ser.write(input + '\r\n')
-            output = ''
-            time.sleep(.5)
-            while ser.inWaiting() > 0:
-             output += ser.read(1)
+    #SIM_Serial.write('AT+CENG=1,1' + '\r\n')
+    #time.sleep(.5) 
 
-            if output != '':
-                print ">>" + output
+    SIM_Serial.write('AT+CENG?' + '\r\n')
+    time.sleep(.5) 
+
+    SIM_Output = ''
+    while SIM_Serial.inWaiting() > 0:
+        SIM_Output += SIM_Serial.read(5) 
+    SIM_Serial.close()
+    print SIM_Output
+
 if __name__ == "__main__":
     main()
 

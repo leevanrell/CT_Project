@@ -33,6 +33,7 @@ def getCellTowers():
         SIM_Output += SIM_Serial.read(6) 
     SIM_Serial.close()
 
+    print SIM_Output;
     # Removes Excess Lines and packs into array
     SIM_Output = SIM_Output.split('\n')
     SIM_Output = SIM_Output[4:11]
@@ -46,10 +47,11 @@ def getLocation():
 
     GPS_Output = GPS_Serial.readline()
     while isValidLocation(GPS_Output) == False:
-        time.sleep(.4) # Need to wait before collecting data
+        print "No Fix"
+        time.sleep(.5) # Need to wait before collecting data
         GPS_Output = GPS_Serial.readline()
     GPS_Serial.close()
-
+    print "Fix"
     return GPS_Output
 
 # Returns bool 
@@ -67,25 +69,18 @@ def main():
     cursor.execute('''CREATE TABLE IF NOT EXISTS CellTowerData(t text, arfcn integer, rxl integer, bsic integer, Cell_ID text, MCC integer, MNC integer, LAC text, lat real, lon real, satellites integer, gps_quality integer, altitude real, altitude_units text);''')
     conn.commit()
 
-    # Configures SIM module to output Cell Tower Meta Data
-    setup_SIM()
-
+    setup_SIM() # Configures SIM module to output Cell Tower Meta Data
     go = True;
     while(go == True):
-        try:
-            # Gets Location data.
-            # $GPGGA, time, lat, N or S, lon, E or W, Quality Indicator, No. of Satellites, 
-            # Precision, Altitude, Units, Separation, Units, Age, Differential reference station ID, 
-            
-            location = getLocation()
+        try: 
+            location = getLocation() # Gets Location data.
             location = location.split(',')
 
             # Now we need to process some of the data
             t = location[1]
-           
-            # We need to convert lat and lon
-            # N, E are positive
-            # S, W are negative
+
+            # N, E is positive
+            # S, W is negative
             if(location[3] == 'N'):
                 lat = float(location[2])
             else:
@@ -94,16 +89,12 @@ def main():
                 lon = float(location[4])
             else:
                 lon = float(location[4]) * -1
-            
             satellites = int(location[7])
             gps_quality = int(location[6])
             altitude = float(location[8])
             altitude_units = location[9]
             
-            
-            # Gets Array of Cell tower data
-            # Each indices contains data on a single Tower
-            cell_towers = getCellTowers()
+            cell_towers = getCellTowers() # Gets Array of Cell tower data
             for i in range(len(cell_towers)):
                
                 # Data in first (serving) cell is ordered differently than first cell,
@@ -112,7 +103,7 @@ def main():
                 cell = cell.split(',')
 
                 arfcn = int(cell[1][1:])    # Absolute radio frequency channel number
-                rxl = int(cell[2])      # Receive level (signal stregnth)
+                rxl = int(cell[2])          # Receive level (signal stregnth)
                   
                 if(i == 0):
                     bsic = int(cell[6])     # Base station identity code
@@ -133,20 +124,21 @@ def main():
                 cursor.execute("INSERT INTO CellTowerData(t, arfcn, rxl, bsic, Cell_ID, MCC, MNC, LAC, lat, lon, satellites, gps_quality, altitude, altitude_units) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
                     (t, arfcn, rxl, bsic, Cell_ID, MCC, MNC, LAC, lat, lon, satellites, gps_quality, altitude, altitude_units))
                 conn.commit()
-                print "Added Entry to Database"
+                print t, ": Added Entry to Database"
         
         # Loops until detects keyboard input
         except KeyboardInterrupt as e:
-            print "Ending Program: "
+            print "\nQuiting Program: "
             go = False
             continue
     conn.close()
+    print("Exit complete")
 
 if __name__ == "__main__":
     # Exception handling in case the devices aren't plugged in or the units get disconnected
     try:
         # Plug in the SIM unit first or the program won't work
-        SIM_Serial = serial.Serial(port='/dev/ttyUSB0', baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
+        SIM_Serial = serial.Serial(port='/dev/ttyUSB0', baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
         SIM_Serial.close()
     except serial.SerialException as e:
         print "SIM is not plugged in!"
@@ -155,7 +147,7 @@ if __name__ == "__main__":
 
     try:
         # Plug in the GPS unit last!
-        SIM_Serial = serial.Serial(port='/dev/ttyUSB1', baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
+        GPS_Serial = serial.Serial(port='/dev/ttyUSB1', baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
         GPS_Serial.close()
     except serial.SerialException as e:
         print "GPS is not plugged in!"

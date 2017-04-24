@@ -50,7 +50,7 @@ if __name__ == '__main__':
 			print 'mode        ' , gpsd.fix.mode
 			print 'sats        ' , gpsd.satellites
 
-			time.sleep(5) #set to whatever
+			time.sleep(1) #set to whatever
 
 	except (KeyboardInterrupt, SystemExit): #when you press ctrl+c
 		print "\nKilling Thread..."
