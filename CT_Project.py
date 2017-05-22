@@ -60,7 +60,7 @@ def isValidLocation(output):
     check = output.split(',')
     # We only want GPGGA sentences;
     # Checks to see if we have a fix; 1 is fix, 2 is a differential fix.
-    return len(output) == 0 and check[0] == "$GPGGA" and (int(check[6]) == 2 or int(check[6]) == 1)
+    return len(output) != 0 and check[0] == "$GPGGA" and (int(check[6]) == 2 or int(check[6]) == 1)
 
 def main():
     #Creates DB for towers and GPS coords
@@ -70,15 +70,14 @@ def main():
     conn.commit()
 
     setup_SIM() # Configures SIM module to output Cell Tower Meta Data
-    go = True;
-    while(go == True):
+    run = True;
+    while(run == True):
         try: 
             location = getLocation() # Gets Location data.
             location = location.split(',')
 
             # Now we need to process some of the data
             t = location[1]
-
             # N, E is positive
             # S, W is negative
             if(location[3] == 'N'):
@@ -129,7 +128,7 @@ def main():
         # Loops until detects keyboard input
         except KeyboardInterrupt as e:
             print "\nQuiting Program: "
-            go = False
+            run = False
             continue
     conn.close()
     print("Exit complete")
