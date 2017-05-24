@@ -33,7 +33,6 @@ def getCellTowers():
         SIM_Output += SIM_Serial.read(6) 
     SIM_Serial.close()
 
-    print SIM_Output;
     # Removes Excess Lines and packs into array
     SIM_Output = SIM_Output.split('\n')
     SIM_Output = SIM_Output[4:11]
@@ -47,11 +46,11 @@ def getLocation():
 
     GPS_Output = GPS_Serial.readline()
     while isValidLocation(GPS_Output) == False:
-        print "No Fix"
+        print 'No Fix'
         time.sleep(.5) # Need to wait before collecting data
         GPS_Output = GPS_Serial.readline()
     GPS_Serial.close()
-    print "Fix"
+    print 'Fix'
     return GPS_Output
 
 # Returns bool 
@@ -60,13 +59,13 @@ def isValidLocation(output):
     check = output.split(',')
     # We only want GPGGA sentences;
     # Checks to see if we have a fix; 1 is fix, 2 is a differential fix.
-    return len(output) != 0 and check[0] == "$GPGGA" and (int(check[6]) == 2 or int(check[6]) == 1)
-
+    return len(output) != 0 and check[0] == '$GPGGA' and (int(check[6]) == 2 or int(check[6]) == 1)
+    
 def main():
     #Creates DB for towers and GPS coords
-    conn = sqlite3.connect('celltowers.db')
+    conn = sqlite3.connect('CellTowers.db')
     cursor = conn.cursor() 
-    cursor.execute('''CREATE TABLE IF NOT EXISTS CellTowerData(t text, arfcn integer, rxl integer, bsic integer, Cell_ID text, MCC integer, MNC integer, LAC text, lat real, lon real, satellites integer, gps_quality integer, altitude real, altitude_units text);''')
+    cursor.execute('''CREATE TABLE IF NOT EXISTS DetectorData(t text, arfcn integer, rxl integer, bsic integer, Cell_ID text, MCC integer, MNC integer, LAC text, lat real, lon real, satellites integer, gps_quality integer, altitude real, altitude_units text);''')
     conn.commit()
 
     setup_SIM() # Configures SIM module to output Cell Tower Meta Data
@@ -88,8 +87,8 @@ def main():
                 lon = float(location[4])
             else:
                 lon = float(location[4]) * -1
-            satellites = int(location[7])
             gps_quality = int(location[6])
+            satellites = int(location[7])
             altitude = float(location[8])
             altitude_units = location[9]
             
@@ -97,7 +96,7 @@ def main():
             for i in range(len(cell_towers)):
                
                 # Data in first (serving) cell is ordered differently than first cell,
-                # +CENG:0, "<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>"
+                # +CENG:0, '<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>'
                 cell = cell_towers[i]
                 cell = cell.split(',')
 
@@ -111,7 +110,7 @@ def main():
                     MNC = int(cell[5])      # Mobile Network Code
                     LAC = cell[10]          # Location Area code
 
-                # +CENG:1+,"<arfcn>, <rxl>, <bsic>, <cellid>, <mcc>, <mnc>, <lac>"    
+                # +CENG:1+,'<arfcn>, <rxl>, <bsic>, <cellid>, <mcc>, <mnc>, <lac>'    
                 else:
                     bsic = int(cell[3])     # Base station identity code
                     Cell_ID = cell[4]       # Unique Identifier
@@ -120,28 +119,28 @@ def main():
                     LAC = cell[7][:-1]      # Location Area code
 
                 # Adds Cell Tower info along with GPS info
-                cursor.execute("INSERT INTO CellTowerData(t, arfcn, rxl, bsic, Cell_ID, MCC, MNC, LAC, lat, lon, satellites, gps_quality, altitude, altitude_units) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", 
+                cursor.execute('INSERT INTO DetectorData(t, arfcn, rxl, bsic, Cell_ID, MCC, MNC, LAC, lat, lon, satellites, gps_quality, altitude, altitude_units) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
                     (t, arfcn, rxl, bsic, Cell_ID, MCC, MNC, LAC, lat, lon, satellites, gps_quality, altitude, altitude_units))
                 conn.commit()
-                print t, ": Added Entry to Database"
+                print t, ': Added Entry to Database'
         
         # Loops until detects keyboard input
         except KeyboardInterrupt as e:
-            print "\nQuiting Program: "
+            print '\nQuiting Program: '
             run = False
             continue
     conn.close()
-    print("Exit complete")
+    print('Exit complete')
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     # Exception handling in case the devices aren't plugged in or the units get disconnected
     try:
         # Plug in the SIM unit first or the program won't work
         SIM_Serial = serial.Serial(port='/dev/ttyUSB0', baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
         SIM_Serial.close()
     except serial.SerialException as e:
-        print "SIM is not plugged in!"
-        print "Quiting Program."
+        print 'SIM is not plugged in!'
+        print 'Quiting Program.'
         quit()
 
     try:
@@ -149,14 +148,14 @@ if __name__ == "__main__":
         GPS_Serial = serial.Serial(port='/dev/ttyUSB1', baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
         GPS_Serial.close()
     except serial.SerialException as e:
-        print "GPS is not plugged in!"
-        print "Quiting Program."
+        print 'GPS is not plugged in!'
+        print 'Quiting Program.'
         quit()
     
     try:
         main()
     except serial.SerialException as e:
-        print "Something Got unplugged!"
-        print "Quitting Program."
+        print 'Something Got unplugged!'
+        print 'Quitting Program.'
         quit()
 
