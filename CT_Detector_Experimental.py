@@ -6,13 +6,12 @@ import serial
 import sqlite3
 import os
 
-
 # Configures Sim900 
 # Sets to Engineering mode     
 def setup_SIM():
-    
     SIM_Serial.open()
     
+    # Sends Command to SIM Unit, configures Engineering mode
     # AT+CENG=<mode>.<Ncell> : mode = switch on engineering mode, Ncell = display neighbor cell ID
     SIM_Serial.write('AT+CENG=1,1' + '\r\n')
     time.sleep(.5) # Need to wait for device to receive commands
@@ -22,15 +21,14 @@ def setup_SIM():
 # Returns Array of Strings
 # Each string represents a cell tower and contains the cell tower's Metadata
 def getCellTowers():
-
     SIM_Serial.open()
     
-    # Displays current engineering mode settings, serving cell and neighboring cells
+    # Sends Command to Display current engineering mode settings, serving cell and neighboring cells
     # We only care about the serving cell and neighboring cell data; We'll cut the rest
     SIM_Serial.write('AT+CENG?' + '\r\n')
     time.sleep(.5) # Need to wait for device to receive commands 
 
-    # Reads in Sim900 output
+    # Reads in SIM900 output
     global SIM_Output
     SIM_Output = ''
     while SIM_Serial.inWaiting() > 0:
@@ -68,14 +66,18 @@ class GPS_Poller(threading.Thread):
         threading.Thread.__init__(self)
 
     def run(self):
+        print '\tGPS Thread Started:'
         getLocation();
+        print '\tGPS Thread Finished'
 
 class SIM_Poller(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
 
     def run(self):
+        print '\tSIM Thread Started:'
         getCellTowers();
+        print '\tSIM Thread Finished'
 
 def main():
     #Creates DB for Cell Towers and GPS coords
@@ -93,17 +95,12 @@ def main():
         try: 
             #Starts Threads
             print 'Starting Threads:'
-            print '\tGPS Thread Started:'
             GPS_Thread.start()
-            print '\tSIM Thread Started:'
             SIM_Thread.start()
-
 
             #Waits for Threads to finish
             GPS_Thread.join()
-            print '\tGPS Thread Finished'
             SIM_Thread.join()
-            print '\tSIM Thread Finished'
 
             location = GPS_Output # Gets Location data.
             location = location.split(',')
@@ -168,13 +165,13 @@ if __name__ == '__main__':
     # Exception handling in case the devices aren't plugged in or the units get disconnected
     try:
         # Plug in the SIM unit first or the program won't work
+        # Can also configure port accordingly
         SIM_Serial = serial.Serial(port='/dev/ttyUSB0', baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
         SIM_Serial.close()
     except serial.SerialException as e:
         print 'SIM is not plugged in!'
         print 'Quiting Program.'
         quit()
-
     try:
         # Plug in the GPS unit last!
         GPS_Serial = serial.Serial(port='/dev/ttyUSB1', baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
@@ -183,7 +180,6 @@ if __name__ == '__main__':
         print 'GPS is not plugged in!'
         print 'Quiting Program.'
         quit()
-    
     try:
         main()
     except serial.SerialException as e:

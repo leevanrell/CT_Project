@@ -5,11 +5,9 @@ import serial
 import sqlite3
 import os
 
-
 # Configures Sim900 
 # Sets to Engineering mode     
-def setup_SIM():
-    
+def setup_SIM():   
     SIM_Serial.open()
     
     # AT+CENG=<mode>.<Ncell> : mode = switch on engineering mode, Ncell = display neighbor cell ID
@@ -21,7 +19,6 @@ def setup_SIM():
 # Returns Array of Strings
 # Each string represents a cell tower and contains the cell tower's Metadata
 def getCellTowers():
-
     SIM_Serial.open()
     
     # Displays current engineering mode settings, serving cell and neighboring cells
