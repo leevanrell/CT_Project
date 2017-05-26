@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import threading
 import time
 import serial
 import sqlite3
@@ -30,6 +31,7 @@ def getCellTowers():
     time.sleep(.5) # Need to wait for device to receive commands 
 
     # Reads in Sim900 output
+    global SIM_Output
     SIM_Output = ''
     while SIM_Serial.inWaiting() > 0:
         SIM_Output += SIM_Serial.read(6) 
@@ -39,21 +41,19 @@ def getCellTowers():
     SIM_Output = SIM_Output.split('\n')
     SIM_Output = SIM_Output[4:11]
 
-    return SIM_Output
-
 # Returns a String
 # Contains GPS data 
 def getLocation():
     GPS_Serial.open()
 
+    global GPS_Output
     GPS_Output = GPS_Serial.readline()
     while isValidLocation(GPS_Output) == False:
-        print 'No Fix'
+        print '\t\tNo Fix'
         time.sleep(.5) # Need to wait before collecting data
         GPS_Output = GPS_Serial.readline()
     GPS_Serial.close()
-    print 'Fix'
-    return GPS_Output
+    print '\t\tFix'
 
 # Returns bool 
 # Only returns true if output contains valid gps data
@@ -63,22 +63,50 @@ def isValidLocation(output):
     # Checks to see if we have a fix; 1 is fix, 2 is a differential fix.
     return len(output) != 0 and check[0] == '$GPGGA' and (int(check[6]) == 2 or int(check[6]) == 1)
     
+class GPS_Poller(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+    def run(self):
+        getLocation();
+
+class SIM_Poller(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+
+    def run(self):
+        getCellTowers();
 
 def main():
-    #Creates DB for towers and GPS coords
+    #Creates DB for Cell Towers and GPS coords
     conn = sqlite3.connect('CellTowers.db')
     cursor = conn.cursor() 
     cursor.execute('''CREATE TABLE IF NOT EXISTS DetectorData(t text, arfcn integer, rxl integer, bsic integer, Cell_ID text, MCC integer, MNC integer, LAC text, lat real, lon real, satellites integer, gps_quality integer, altitude real, altitude_units text);''')
     conn.commit()
 
     setup_SIM() # Configures SIM module to output Cell Tower Meta Data
-    
+    GPS_Thread = GPS_Poller()
+    SIM_Thread = SIM_Poller()
+
     run = True;
     while(run == True):
         try: 
-            location = getLocation() # Gets Location data.
-            location = location.split(',')
+            #Starts Threads
+            print 'Starting Threads:'
+            print '\tGPS Thread Started:'
+            GPS_Thread.start()
+            print '\tSIM Thread Started:'
+            SIM_Thread.start()
 
+
+            #Waits for Threads to finish
+            GPS_Thread.join()
+            print '\tGPS Thread Finished'
+            SIM_Thread.join()
+            print '\tSIM Thread Finished'
+
+            location = GPS_Output # Gets Location data.
+            location = location.split(',')
             # Now we need to process some of the data
             t = location[1]
             # N, E is positive
@@ -96,7 +124,7 @@ def main():
             altitude = float(location[8])
             altitude_units = location[9]
             
-            cell_towers = getCellTowers() # Gets Array of Cell tower data
+            cell_towers = SIM_Output # Gets Array of Cell tower data
             for i in range(len(cell_towers)):
                
                 # Data in first (serving) cell is ordered differently than first cell,

@@ -1,3 +1,5 @@
+#!/usr/bin/python
+
 import sqlite3
 from urllib2 import Request, urlopen, URLError
 
