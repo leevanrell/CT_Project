@@ -58,9 +58,8 @@ def isValidLocation(output):
     check = output.split(',')
     # We only want GPGGA sentences;
     # Checks to see if we have a fix; 1 is fix, 2 is a differential fix.
-    return len(output) != 0 and check[0] == '$GPGGA' and (int(check[6]) == 2 or int(check[6]) == 1)
+    return len(output) != 0 and check[0] == '$GPGGA' and int(check[6]) != 0
     
-
 def main():
     #Creates DB for towers and GPS coords
     conn = sqlite3.connect('CellTowers.db')
@@ -123,7 +122,7 @@ def main():
                 cursor.execute('INSERT INTO DetectorData(t, arfcn, rxl, bsic, Cell_ID, MCC, MNC, LAC, lat, lon, satellites, gps_quality, altitude, altitude_units) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
                     (t, arfcn, rxl, bsic, Cell_ID, MCC, MNC, LAC, lat, lon, satellites, gps_quality, altitude, altitude_units))
                 conn.commit()
-                print t, ': Added Entry to Database'
+                print '%s: Added Entry to Database' % strtime('%Y-%m-%d %H:%M:%S', gmtime())
         
         # Loops until detects keyboard input
         except KeyboardInterrupt as e:

@@ -58,8 +58,8 @@ def getLocation():
 def isValidLocation(output):
     check = output.split(',')
     # We only want GPGGA sentences;
-    # Checks to see if we have a fix; 1 is fix, 2 is a differential fix.
-    return len(output) != 0 and check[0] == '$GPGGA' and (int(check[6]) == 2 or int(check[6]) == 1)
+    # Checks to see if we have a fix; 1 is fix, 2 is a differential fix, 0 is no fix.
+    return len(output) != 0 and check[0] == '$GPGGA' and int(check[6]) != 0
     
 class GPS_Poller(threading.Thread):
     def __init__(self):
@@ -151,7 +151,7 @@ def main():
                 cursor.execute('INSERT INTO DetectorData(t, arfcn, rxl, bsic, Cell_ID, MCC, MNC, LAC, lat, lon, satellites, gps_quality, altitude, altitude_units) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
                     (t, arfcn, rxl, bsic, Cell_ID, MCC, MNC, LAC, lat, lon, satellites, gps_quality, altitude, altitude_units))
                 conn.commit()
-                print t, ': Added Entry to Database'
+                print '%s: Added Entry to Database' % time.ctime()
         
         # Loops until detects keyboard input
         except KeyboardInterrupt as e:
@@ -162,11 +162,14 @@ def main():
     print('Exit complete')
 
 if __name__ == '__main__':
+    global SIM_TTY, GPS_TTY
+    SIM_TTY = '/dev/ttyUSB0'
+    GPS_TTY = '/dev/ttyUSB1'
     # Exception handling in case the devices aren't plugged in or the units get disconnected
     try:
         # Plug in the SIM unit first or the program won't work
         # Can also configure port accordingly
-        SIM_Serial = serial.Serial(port='/dev/ttyUSB0', baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
+        SIM_Serial = serial.Serial(port=SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
         SIM_Serial.close()
     except serial.SerialException as e:
         print 'SIM is not plugged in!'
@@ -174,7 +177,7 @@ if __name__ == '__main__':
         quit()
     try:
         # Plug in the GPS unit last!
-        GPS_Serial = serial.Serial(port='/dev/ttyUSB1', baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
+        GPS_Serial = serial.Serial(port=GPS_TTY, baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
         GPS_Serial.close()
     except serial.SerialException as e:
         print 'GPS is not plugged in!'

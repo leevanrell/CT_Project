@@ -18,7 +18,7 @@ def main():
         cellid = row[4]
         mcc = row[5]
         mnc = row[6]
-        ac = row[7]
+        lac = row[7]
 		
 		# Makes API request
         request_str = 'https://api.mylnikov.org/geolocation/cell?v=1.1&data=open&mcc=%s&mnc=%s&lac=%s&cellid=%s' % (mcc, mnc, lac, cellid)
@@ -31,10 +31,13 @@ def main():
             code = int(check[14:18])
             if(code == 404) :
 				# adds row to Rogue Cell Tower DB
+                print "Tower Added to Rogue DB:"
+                print "\tCell id : %s" $ cellid
                 c2.execute('INSERT INTO RogueData(t, arfcn, rxl, bsic, Cell_ID, MCC, MNC, LAC, lat, lon, satellites, gps_quality, altitude, altitude_units) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', row)
         except URLError, e:
             print 'URL Error: ', e
             quit()
     conn.close()
+
 if __name__ == "__main__":
     main()
