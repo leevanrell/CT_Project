@@ -5,7 +5,7 @@ from urllib2 import Request, urlopen, URLError
 
 def main():
     conn = sqlite3.connect('CellTowers.db')
-    c1= conn.cursor()
+    c1 = conn.cursor()
     c1.execute('SELECT * FROM DetectorData')
 
     c2 = conn.cursor() 
