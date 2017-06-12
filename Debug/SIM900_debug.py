@@ -1,11 +1,11 @@
 # Creates User interface for playing around with Sim900
 # For Debuggin
 import serial
-import time
+from time import sleep
 
 def main():
     SIM_Serial = serial.Serial(
-        port='/dev/ttyUSB0',
+        port='/dev/ttyUSB1',
         baudrate=115200,
         parity=serial.PARITY_NONE,
         stopbits=serial.STOPBITS_ONE,        
@@ -17,10 +17,11 @@ def main():
         print "Port Failed to Open"
 
     #SIM_Serial.write('AT+CENG=1,1' + '\r\n')
-    #time.sleep(.5) 
+    #sleep(.5) 
+
 
     SIM_Serial.write('AT+CENG?' + '\r\n')
-    time.sleep(.5) 
+    sleep(.1) 
 
     SIM_Output = ''
     while SIM_Serial.inWaiting() > 0:
