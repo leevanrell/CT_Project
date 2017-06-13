@@ -89,20 +89,20 @@ class DataThread(threading.Thread):
                 # +CENG:0, '<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>'
                 cell_tower = cell_towers[i]
                 cell_tower = cell_tower.split(',')
-                arfcn = int(cell_tower[1][1:])    # Absolute radio frequency channel number
+                arfcn = cell_tower[1][1:]         # Absolute radio frequency channel number
                 rxl = int(cell_tower[2])          # Receive level (signal stregnth)
                 if(i == 0):
-                    bsic = int(cell_tower[6])     # Base station identity code
+                    bsic = cell_tower[6]          # Base station identity code
                     Cell_ID = cell_tower[7]       # Unique Identifier
-                    MCC = int(cell_tower[4])      # Mobile Country Code
-                    MNC = int(cell_tower[5])      # Mobile Network Code
+                    MCC = cell_tower[4]           # Mobile Country Code
+                    MNC = cell_tower[5]           # Mobile Network Code
                     LAC = cell_tower[10]          # Location Area code
                 # +CENG:1+,'<arfcn>, <rxl>, <bsic>, <cellid>, <mcc>, <mnc>, <lac>'    
                 else:
-                    bsic = int(cell_tower[3])     # Base station identity code
+                    bsic = cell_tower[3]          # Base station identity code
                     Cell_ID = cell_tower[4]       # Unique Identifier
-                    MCC = int(cell_tower[5])      # Mobile Country Code
-                    MNC = int(cell_tower[6])      # Mobile Network Code
+                    MCC = cell_tower[5]           # Mobile Country Code
+                    MNC = cell_tower[6]           # Mobile Network Code
                     LAC = cell_tower[7][:-1]      # Location Area code
                 entry = {'time': time,
                  'arfcn': arfcn,
