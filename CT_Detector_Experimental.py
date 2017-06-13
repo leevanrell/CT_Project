@@ -1,19 +1,18 @@
 #!/usr/bin/python
-SIM_TTY = '/dev/ttyUSB0'
+SIM_TTY = '/dev/ttyUSB2'
 GPS_TTY = '/dev/ttyUSB1'
 DB_URL = 'mongodb://localhost:27017/'
 
 import threading
 import serial
-#import os
 import Queue
 import pymongo
-import socket
+import os
+from pymongo import MongoClient
 from time import sleep
+
 def setupTTY(SIM_TTY, GPS_TTY):
     try:
-        # Plug in the SIM unit first or the program won't work
-        # Can also configure TTY port accordingly
         global SIM_Serial
         SIM_Serial = serial.Serial(port=SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
         SIM_Serial.close()
@@ -22,7 +21,6 @@ def setupTTY(SIM_TTY, GPS_TTY):
         print 'Quiting Program.'
         quit()
     try:
-        # Plug in the GPS unit last!
         global GPS_Serial
         GPS_Serial = serial.Serial(port=GPS_TTY, baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
         GPS_Serial.close()
@@ -31,45 +29,46 @@ def setupTTY(SIM_TTY, GPS_TTY):
         print 'Quiting Program.'
         quit()
 
-# Configures SIM900 to Engineering mode   
 def setupSIM():
+    global SIM_Serial
     SIM_Serial.open()
-    # AT+CENG=<mode>.<Ncell> : mode = switch on engineering mode, Ncell = display neighbor cell ID
     SIM_Serial.write('AT+CENG=1,1' + '\r\n') # Configures SIM unit to Engineering mode
     sleep(.5) # Need to wait for device to receive commands
     SIM_Serial.close()
 
-#Configures GPS Unit
 def setupGPS():
+    global GPS_Serial
     GPS_Serial.open()
-    sleep(5)
-    ser.write('$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29<CR><LF> ' + '\r\n') #Configures GPS to only output GPGGA Sentences
-    sleep(1) # Need to wait for device to receive commands
-    ser.write('$PMTK220,100*2F<CR><LF>' + '\r\n') # Configures Fix interval to 100 ms
-    sleep(1)
-    ser.write('$PMTK251,115200*1F<CR><LF>' + '\r\n') # Configures Baud Rate to 115200
-    sleep(1)
-    GPS_Serial = serial.Serial(port=GPS_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
+    sleep(.5)
+    GPS_Serial.write('$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29<CR><LF> ' + '\r\n') #Configures GPS to only output GPGGA Sentences
+    sleep(.5) # Need to wait for device to receive commands
+    GPS_Serial.write('$PMTK220,100*2F<CR><LF>' + '\r\n') # Configures Fix interval to 100 ms
+    sleep(.5)
+    GPS_Serial.write('$PMTK251,115200*1F<CR><LF>' + '\r\n') # Configures Baud Rate to 115200
+    sleep(.5)
+    GPS_Serial = serial.Serial(port=GPS_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0) # Changes to Higher Baud Rate
     GPS_Serial.close()   
 
 class DataThread(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         self.running = True
+        self.GPS_Thread = self.GPS_Poller()
+        self.SIM_Thread = self.SIM_Poller()
+    
     def run(self):
-        GPS_Thread = GPS_Poller()
-        SIM_Thread = SIM_Poller()
         while self.running:
             # Starts Threads
-            GPS_Thread.start()
-            SIM_Thread.start()
-            # Waits for Threads to finish
-            GPS_Thread.join()
-            SIM_Thread.join()
+            self.GPS_Thread.start()
+            self.SIM_Thread.start()
 
-            location = GPS_Thread.GPS_Output # Gets Location data.
+            # Waits for Threads to finish
+            self.GPS_Thread.join()
+            self.SIM_Thread.join()
+
+            location = self.GPS_Thread.GPS_Output # Gets Location data.
             #location = location.split(',')
-            # Now we need to process some of the data
+
             time = location[1]
             if(location[3] == 'N'):
                 Lat = float(location[2]) # N, E is positive
@@ -84,13 +83,12 @@ class DataThread(threading.Thread):
             Altitude = float(location[8])
             Altitude_units = location[9]
             
-            cell_towers = SIM_Thread.SIM_Output # Gets Array of Cell tower data
-            #for i in range(len(cell_towers)):
-            for cell_tower in cell_towers  
+            cell_towers = self.SIM_Thread.SIM_Output # Gets Array of Cell tower data
+            for i in range(len(cell_towers)):
                 # Data in first (serving) cell is ordered differently than first cell,
                 # +CENG:0, '<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>'
-                # cell = cell_towers[i]
-                cell_tower = cell.split(',')
+                cell_tower = cell_towers[i]
+                cell_tower = cell_tower.split(',')
                 arfcn = int(cell_tower[1][1:])    # Absolute radio frequency channel number
                 rxl = int(cell_tower[2])          # Receive level (signal stregnth)
                 if(i == 0):
@@ -122,17 +120,19 @@ class DataThread(threading.Thread):
                  'Altitude_units': Altitude_units
                 }
                 if(rxl > 1):
+                    global q
                     q.put(entry)
 
     class GPS_Poller(threading.Thread):
         def __init__(self):
             threading.Thread.__init__(self)
-            self.GPS_Output
+            self.GPS_Output = ''
 
         def run(self):
             GPS_Serial.open()
+            sleep(.5)
             GPS_Output = GPS_Serial.readline()
-            while not isValidLocation(GPS_Output):
+            while not self.isValidLocation(GPS_Output):
                 sleep(.1) # Need to wait before collecting data
                 GPS_Output = GPS_Serial.readline()
             GPS_Serial.close()
@@ -146,7 +146,8 @@ class DataThread(threading.Thread):
     class SIM_Poller(threading.Thread):
         def __init__(self):
             threading.Thread.__init__(self)
-            self.SIM_Output
+            self.SIM_Output = ''
+        
         def run(self):
             SIM_Serial.open() 
             SIM_Serial.write('AT+CENG?' + '\r\n')  # Sends Command to Display current engineering mode settings, serving cell and neighboring cells
@@ -165,14 +166,24 @@ class LoggingThread(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         self.client = MongoClient(DB_URL)
-        self.db = client.CellTower_DB 
-        self.collection = db.CellTower_Collection
+        self.db = self.client.CellTower_DB 
+        self.collection = self.db.CellTower_Collection
         self.running = True
+    
     def run(self):
         while self.running:
-            while isConnected() and not q.empty():
-                collection.insert_one(q.get())
+            while not q.empty():
+                if self.isConnected():
+                    collection.insert_one(q.get())
+                else:
+                    sleep(.5)
             sleep(.5)
+        while not q.empty():
+            if self.isConnected():
+                collection.insert_one(q.get())
+            else:
+                sleep(.5)
+    
     def isConnected():
         try:
             socket.create_connection(("www.google.com", 80)) # connect to the host -- tells us if the host is actuallyreachable
@@ -181,24 +192,47 @@ class LoggingThread(threading.Thread):
             pass
         return False
 
+class MenuThread(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.running = True #setting the thread running to true
+
+    def run(self):
+        while self.running:
+            os.system('clear')
+            strftime("%Y-%m-%d %H:%M:%S", gmtime())
+            if Data.GPS_Thread.Fix:
+                print 'GPS: Has Fix'
+            else:
+                print 'GPS: No Fix'  
+            if Log.connection:
+                print 'Wifi: Has Connection'
+            else:
+                print 'Wifi: No Connection'
+            sleep(1)
+
+
 
 def main():
-    setupTTY(SIM_TTY, GPS_TTY)
-    setupSIM() # Configures SIM module to output Cell Tower Meta Data
-    setupGPS() # Configures GPS module to only output GPGGA Sentences, also makes GPS Hella Fast
     global q
     q = Queue.Queue()
+    setupTTY(SIM_TTY, GPS_TTY)
+    setupSIM() # Configures SIM module to output Cell Tower Meta Data
+    setupGPS() # Configures GPS module to only output GPGGA Sentences and increase's GPS speed
     Data = DataThread()
     Log = LoggingThread()
+    #Menu = MenuThread()
     try:
         Data.start() # Get this ish running
         Log.start()
-        while True 
+        #Menu.start()
+        while True:
             sleep(.5)
     except (KeyboardInterrupt, SystemExit): # when you press ctrl+c
         print '\nKilling Thread...'
         Data.running = False
         Log.running = False
+        #Menu.running = False
         Data.join() # wait for the thread to finish what it's doing
         Log.join()
     print 'Done.\nExiting.'

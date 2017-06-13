@@ -1,46 +1,51 @@
+import threading
 import serial
-import time
+import Queue
+import pymongo
+import os
+from pymongo import MongoClient
+from time import sleep
+from time import gmtime, strftime
 
-def isValidLocation(output):
-    # $GPGGA,195718.000,3236.3567,N,08529.2146,W,1,05,1.47,180.6,M,-29.4,M,,*53
-    check = output.split(',')
-    return len(output) != 0 and check[0] == "$GPGGA" and int(check[6]) == 2
+class GPS_Poller(threading.Thread):
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.GPS_Output = ''
 
+    def run(self):
+        GPS_Serial.open()
+        sleep(.5)
+        GPS_Output = GPS_Serial.readline()
+        print GPS_Output
+        '''
+        while not self.isValidLocation(GPS_Output):
+            sleep(.1) # Need to wait before collecting data
+            GPS_Output = GPS_Serial.readline()
+        GPS_Serial.close()
+        GPS_Output = GPS_Output.split(',')
+        self.GPS_Output = GPS_Output
+        '''
 
+    def isValidLocation(output):
+        check = output.split(',')
+        return len(output) != 0 and check[0] == '$GPGGA' and int(check[6]) != 0 # We only want GPGGA sentences with an Actual Fix (Fix != 0)
 
 def main():
-    ser = serial.Serial(
-        port='/dev/ttyUSB1',
+    global GPS_Serial
+    GPS_Serial = serial.Serial(
+        port='/dev/ttyUSB2',
         baudrate=9600,
         parity=serial.PARITY_NONE,
         stopbits=serial.STOPBITS_ONE,
         bytesize=serial.EIGHTBITS,
         timeout=0
     )
+    GPS_Serial.close()
 
-    if ser.isOpen() == False:
-        print "Port Failed to Open"
-        quit()
-
-    # $PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*2C<CR><LF> 
-    # PMTK_API_SET_NMEA_OUTPUT : only prints GGA (GPS Fix Data) every one fix
-
-    # Possibly set Update Rate
-    # $PMTK220,100*2F<CR><LF>
-    # PMTK_SET_NMEA_UPDATERATE : position fix interval 100 ms
-    # Make to baudrate faster to keep up
-    # $PMTK251,115200*27<CR><LF> 
-    # PMTK_SET_NMEA_BAUDRATE : sets baudrate to 115200
-
-
-    ser.write('$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*2C<CR><LF> ' + '\r\n')
-    print ser.readline()
-    string = ''
-    while True:
-        string = ser.readline()
-        print string, isValidLocation(string)
-        time.sleep(.4)
-
+    GPS = GPS_Poller()
+    GPS.start()
+    GPS.join()
+    print 'Done'
 
 if __name__ == "__main__":
     main()
