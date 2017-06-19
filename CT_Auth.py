@@ -1,43 +1,65 @@
 #!/usr/bin/python
 
-import sqlite3
-from urllib2 import Request, urlopen, URLError
+DB_URL = 'mongodb://localhost:27017/'
+ 
+import requests
+import pymongo
+from pymonogo import MongoClient
 
 def main():
-    conn = sqlite3.connect('CellTowers.db')
-    c1 = conn.cursor()
-    c1.execute('SELECT * FROM DetectorData')
+    client = MongoClient(DB_URL)
+    db = client['CellTower_DB']
+    collection = db['CellTower_Collection']
+    rogue_db = client['Rogue_DB']
+    rogue_collection = rogue_db['Rogue_Collection']
+    findRogueTowers()
 
-    c2 = conn.cursor() 
-    # Creates table to store rogue cell tower's data
-    c2.execute('''CREATE TABLE IF NOT EXISTS RogueData(t text, arfcn integer, rxl integer, bsic integer, Cell_ID text, MCC integer, MNC integer, LAC text, lat real, lon real, satellites integer, gps_quality integer, altitude real, altitude_units text);''')
-    c2.commit()
 
+def findRogueTowers():
     # Iterates through DetectorData table
-    for row in c1:
+    cursor = collection.find()
+    while cursor.hasNext() :
+        document = cursor.next()
         cellid = row[4]
         mcc = row[5]
         mnc = row[6]
         lac = row[7]
-		
-		# Makes API request
-        request_str = 'https://api.mylnikov.org/geolocation/cell?v=1.1&data=open&mcc=%s&mnc=%s&lac=%s&cellid=%s' % (mcc, mnc, lac, cellid)
-        request = Request(request_str)
-        try:
-            response = urlopen(request)
-            check = response.read()
-			# Gets code from API response
-			# 200 = Tower is in DB and 404 = Tower is not found
-            code = int(check[14:18])
-            if(code == 404) :
-				# adds row to Rogue Cell Tower DB
-                print "Tower Added to Rogue DB:"
-                print "\tCell id : %s" $ cellid
-                c2.execute('INSERT INTO RogueData(t, arfcn, rxl, bsic, Cell_ID, MCC, MNC, LAC, lat, lon, satellites, gps_quality, altitude, altitude_units) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', row)
-        except URLError, e:
-            print 'URL Error: ', e
-            quit()
-    conn.close()
+        
+        # Makes API request
+        request = 'https://api.mylnikov.org/geolocation/cell?v=1.1&data=open&mcc=%s&mnc=%s&lac=%s&cellid=%s' % (mcc, mnc, lac, cellid)
+        r = requests.get(request)
+        if(r.status_code == 404) :
+            print "Document Added to Rogue DB: %s" % cellid
+            rogue_collection.insert_one(document)
+
+def listCellTowers():
+    print collection.distinct('Cell_ID')
+
+#def maponeCellTower():
+#def mapallCellTowers_Together():
+#def mappallCellTowers_Individually():
+
+
+            
 
 if __name__ == "__main__":
     main()
+
+
+'''
+document = {'time': time,
+ 'arfcn': arfcn,
+ 'rxl': rxl, 
+ 'bsic': bsic, 
+ 'Cell_ID': Cell_ID,
+ 'MCC': MCC,
+ 'MNC': MNC,
+ 'LAC': LAC, 
+ 'Lat': Lat,
+ 'Lon': Lon, 
+ 'Satellites': Satellites,
+ 'GPS_quality': GPS_quality,
+ 'Altitude': Altitude,
+ 'Altitude_units': Altitude_units
+}
+'''
