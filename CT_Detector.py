@@ -3,14 +3,15 @@ SIM_TTY = '/dev/ttyUSB0'
 GPS_TTY = '/dev/ttyUSB5'
 DB_URL = 'mongodb://localhost:27017/'
 
-import threading
-import serial
-import Queue
-import pymongo
-import os
-import socket
-from pymongo import MongoClient
-from time import sleep
+import threading # used for threads
+import serial # used for serial connection
+import Queue # used for queue for threads
+import os # ?
+import socket # used to test connectivity
+import pymongo # used for db
+#import RPi.GPIO as GPIO # used to control the Pi's GPIO pins
+from pymongo import MongoClient # used for db
+from time import sleep # used to sleep
 
 q = Queue.Queue()
 
