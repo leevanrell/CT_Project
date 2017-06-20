@@ -9,7 +9,8 @@ import Queue # used for queue for threads
 import os # ?
 import socket # used to test connectivity
 import pymongo # used for db
-#import RPi.GPIO as GPIO # used to control the Pi's GPIO pins
+
+import RPi.GPIO as GPIO # used to control the Pi's GPIO pins
 from pymongo import MongoClient # used for db
 from time import sleep # used to sleep
 
@@ -205,8 +206,15 @@ def main():
     try:
         Data.start() # Get this ish running
         Logger.start()
+        
+        GPIO.setmdoe(GPIO.BCM)
+        GPIO.setwarnings(False)
+        GPIO.setup(3, GPIO.out)
         while True:
-            sleep(.5)
+            GPIO.output(3, GPIO.HIGH)
+            sleep(1)
+            GPIO.output(3,GPIO.LOW)
+            sleep(1)
     except (KeyboardInterrupt, SystemExit): # when you press ctrl+c
         print 'Detected KeyboardInterrupt: Killing Threads.'
         Data.running = False
