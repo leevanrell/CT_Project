@@ -9,9 +9,8 @@ import Queue # used for queue for threads
 import os # ?
 import socket # used to test connectivity
 import pymongo # used for db
-
 import RPi.GPIO as GPIO # used to control the Pi's GPIO pins
-from pymongo import MongoClient # used for db
+import urllib2
 from time import sleep # used to sleep
 
 q = Queue.Queue()
@@ -171,22 +170,29 @@ class Data_Thread(threading.Thread):
 class Logging_Thread(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
-        self.client = MongoClient(DB_URL)
-        self.db = self.client['CellTower_DB'] 
-        self.collection = self.db['CellTower_Collection']
         self.running = True
     
     def run(self):
         while self.running:
             while not q.empty():
                 if self.isConnected():
-                    self.collection.insert_one(q.get())
+                    document = q.get()
+                    req = urllib2.Request(HTTP_SERVER)
+                    req.add_header('Content-Type', 'application/json')
+                    response = urllib2.urlopen(req, json.dumps(document))
+                    if response.status_code != 200:
+                        q.add(document)
                 else:
                     sleep(.5)
             sleep(.5)
         while not q.empty():
             if self.isConnected():
-                collection.insert_one(q.get())
+                document = q.get()
+                req = urllib2.Request(HTTP_SERVER)
+                req.add_header('Content-Type', 'application/json')
+                response = urllib2.urlopen(req, json.dumps(document))
+                if response.status_code != 200:
+                    q.add(document)
             else:
                 sleep(.5)
     
@@ -207,27 +213,32 @@ def main():
         Data.start() # Get this ish running
         Logger.start()
         
-        GPIO.setmdoe(GPIO.BCM)
+        GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(False)
         GPIO.setup(3, GPIO.out)
         while True:
             GPIO.output(3, GPIO.HIGH)
-            sleep(1)
+            sleep(.2)
             GPIO.output(3,GPIO.LOW)
-            sleep(1)
+            sleep(.2)
     except (KeyboardInterrupt, SystemExit): # when you press ctrl+c
         print 'Detected KeyboardInterrupt: Killing Threads.'
         Data.running = False
         Logger.running = False
         Data.join() # wait for the thread to finish what it's doing
         Logger.join()
+        GPIO.output(3,GPIO.LOW)
+        GPIO.cleanup()
     except serial.SerialException as e:
         print 'Error: Something Got Unplugged!'
-        #Logger.running = False
-        #Data.running = False
+        Data.running = False
         #Data.join()
-        #Logger.join()
+        Logger.running = False
+        Logger.join()
+        sleep(1)
         print 'Quiting Program.'
+        GPIO.output(3,GPIO.LOW)
+        GPIO.cleanup()
         quit()
 
     print 'Done.\nExiting.'
