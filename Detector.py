@@ -213,21 +213,38 @@ def main():
         Data.start() # Get this ish running
         Logger.start()
         
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setwarnings(False)
-        GPIO.setup(3, GPIO.out)
-        while True:
-            GPIO.output(3, GPIO.HIGH)
+        # Sets GPIO LED_gpio as LED output
+        LED_gpio = 3
+        GPIO.setup(LED_gpio, GPIO.OUT)
+        GPIO.output(LED_gpio, GPIO.LOW)
+
+        # Sets GPIO 2LED_gpio as Button input
+        button_gpio = 23
+        GPIO.setup(button_gpio, GPIO.IN, pull_up_down = GPIO.PUD_UP)
+
+        run = True
+        while run:
+            GPIO.output(LED_gpio, GPIO.HIGH)
             sleep(.2)
-            GPIO.output(3,GPIO.LOW)
+            GPIO.output(LED_gpio,GPIO.LOW)
             sleep(.2)
+            if(GPIO.input(button_gpio) == 0):
+                print 'Detected GPIO Button Press: Killing Threads'
+                GPIO.output(LED_gpio, GPIO.LOW)
+                GPIO.cleanup()
+                Data.running = False
+                Logger.running = False
+                run = False
+                Data.join() # wait for the thread to finish what it's doing
+                Logger.join()
+
     except (KeyboardInterrupt, SystemExit): # when you press ctrl+c
         print 'Detected KeyboardInterrupt: Killing Threads.'
         Data.running = False
         Logger.running = False
         Data.join() # wait for the thread to finish what it's doing
         Logger.join()
-        GPIO.output(3,GPIO.LOW)
+        GPIO.output(LED_gpio,GPIO.LOW)
         GPIO.cleanup()
     except serial.SerialException as e:
         print 'Error: Something Got Unplugged!'
@@ -237,7 +254,7 @@ def main():
         Logger.join()
         sleep(1)
         print 'Quiting Program.'
-        GPIO.output(3,GPIO.LOW)
+        GPIO.output(LED_gpio,GPIO.LOW)
         GPIO.cleanup()
         quit()
 
