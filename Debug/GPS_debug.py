@@ -1,14 +1,13 @@
 import threading
 import serial
 import Queue
-import pymongo
 import os
 from pymongo import MongoClient
 from time import sleep
 from time import gmtime, strftime
 
 
-GPS_TTY = '/dev/ttyUSB5'
+GPS_TTY = '/dev/ttyUSB1'
 
 class GPS_Poller(threading.Thread):
     def __init__(self):
@@ -25,6 +24,7 @@ class GPS_Poller(threading.Thread):
             GPS_Output = self.GPS_Serial.readline()
 
             while self.isValidLocation(self.GPS_Output) == False:
+                print GPS_Output
                 sleep(.1) # Need to wait before collecting data
                 self.GPS_Output = self.GPS_Serial.readline()
             self.GPS_Serial.close()
