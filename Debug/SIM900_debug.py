@@ -17,11 +17,11 @@ def main():
         print "Port Failed to Open"
 
     SIM_Serial.write('AT+CENG=1,1' + '\r\n')
-    sleep(.5) 
+    sleep(.1) 
 
     while True:
         SIM_Serial.write('AT+CENG?' + '\r\n')
-        sleep(.5) 
+        sleep(.1) 
 
         SIM_Output = ''
         while SIM_Serial.inWaiting() > 0:

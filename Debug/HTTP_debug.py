@@ -4,22 +4,21 @@ import json
 import urllib2
 import requests
 
-document = {'time': 194509.000, 
- 'arfcn': '0181',
- 'rxl': 12, 
- 'bsic': '12', 
- 'Cell_ID': '10a1',
+document = {'time': '194558.000', 
  'MCC': 310,
  'MNC': 410,
  'LAC': '7935',
- 'lat': 12.912,
- 'lon': -34.021, 
+ 'Cell_ID': '9821',
+ 'rxl': 5, 
+ 'arfcn': '0181',
+ 'bsic': '12', 
+ 'lat': 32.609306,
+ 'lon': -85.481558, 
  'satellites': 5,
  'GPS_quality': 2,
  'altitude': 230.2,
  'altitude_units': 'M'
 }
-
 
 try:
 	json_object = json.loads(json.dumps(document))
