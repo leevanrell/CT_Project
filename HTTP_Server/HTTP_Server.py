@@ -7,9 +7,9 @@ PATH = 'data/'
 # setting up logging for cassandra and post requests
 import logging
 log = logging.getLogger()
-log.setLevel('DEBUG')
+log.setLevel('INFO')
 handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s'))
+handler.setFormatter(logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s'))
 log.addHandler(handler)
 
 from cassandra import ConsistencyLevel
@@ -30,45 +30,43 @@ class S(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
             self.end_headers()
+            self.FOLDER = ''
 
-    def _set_index(FOLDER, self):
-        FOLDER = PATH + str(datetime.date.today())
-        with open('index.html', 'w') as f:
-            f.write('''<!DOCTYPE html>\n<html>\n<head>\n<title>Lee's HTTP Server</title>\n</head>\n<body bgcolor=white>\n<table border="0" cellpadding="10">\n<tr>\n<td>\n<h1><font color="black">Cell Tower Data</h1>\n</td>\n</tr>\n</table>\n''')
-            for file in os.listdir(str(FOLDER)):
-                if file.endswith(".png"):
-                    f.write('<p>%s</p>\n<img src="%s" WIDTH=1280 HEIGHT=1280>\n' % (file[:-4], file))
-                f.write('</body>\n</html>')
 
-    def _get_data(FOLDER, self)
+    def _get_data(self):
         CasstoCSV.create_Table() # Gets newest data from cassandra
         subprocess.Popen("nohup sudo Rscript Analysis.R &", shell=True).wait() # does anaylsis of data
-        subprocess.Popen("sudo rm nohup.out", shell=True)
-        self._set_index(FOLDER) # Creates HTML page
+        #subprocess.Popen("sudo rm nohup.out", shell=True)
+        with open('index.html', 'w') as f:
+            f.write('''<!DOCTYPE html>\n<html>\n<head>\n<title>Lee's HTTP Server</title>\n</head>\n<body bgcolor=white>\n<table border="0" cellpadding="10">\n<tr>\n<td>\n<h1><font color="black">Cell Tower Data</h1>\n</td>\n</tr>\n</table>\n''')
+            for file in os.listdir(self.FOLDER):
+                if file.endswith(".png"):
+                    f.write('<p>%s</p>\n<img src="%s" WIDTH=1280 HEIGHT=1280>\n' % (file[:-4], file))
+            f.write('</body>\n</html>')
+        log.info('HTTP: Made new index.html')
 
     def do_GET(self):
-        FOLDER = PATH + str(datetime.date.today())
-        self._set_index(FOLDER)
+        self.FOLDER = PATH + str(datetime.date.today())
         # if table.csv hasn't been created for today
-        if not os.path.exists(FOLDER):
+        if not os.path.exists(self.FOLDER):
             log.info('HTTP: Creating Today\'s Folder')
-            self._get_data(FOLDER)
+            self._get_data()
         else:
-            file = FOLDER + '/table.csv'
+            file = self.FOLDER + '/table.csv'
             stat = os.stat(file)
             timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(file)) # gets time when table.csv was last edited
             difference = datetime.datetime.now() - timestamp
 
-            # Gets new data if table.csv is older than 10 minutes old
-            if(difference.seconds > 10 * 60):
+            # Gets new data if table.csv is older than 1 minutes old
+            if(difference.seconds > 60):
                 log.info('HTTP: Updating Data')
-                self._get_data(FOLDER)
+                self._get_data()
 
-        if self.path[-4:] == '.png' and os.path.exists(FOLDER + self.path): # and '..' not in self.path  and '/' not in self.path[1:]:
+        if self.path[-4:] == '.png' and os.path.exists(self.FOLDER + self.path): # and '..' not in self.path  and '/' not in self.path[1:]:
             self.send_response(200)
             self.send_header('Content-type', 'image/png')
             self.end_headers()
-            with open(FOLDER + self.path, 'rb') as f:
+            with open(self.FOLDER + self.path, 'rb') as f:
                 self.wfile.write(f.read())
         elif self.path == "/":
             self._set_headers()
@@ -117,7 +115,7 @@ if __name__ == "__main__":
     session.execute('''CREATE KEYSPACE IF NOT EXISTS %s WITH replication = { 'class': 'SimpleStrategy', 'replication_factor': '2' }''' % KEYSPACE)
     log.info('CASS: Connecting to %s' % KEYSPACE)
     session.set_keyspace(KEYSPACE)
-    #session.execute('DROP TABLE DetectorData')
+    session.execute('DROP TABLE DetectorData')
     # Creates Table if it does not exist (first time setup)
     session.execute('''CREATE TABLE IF NOT EXISTS %s(
         time text,  MCC int, MNC int, LAC text, Cell_ID text, rxl int, arfcn text, bsic text, lat float,

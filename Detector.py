@@ -1,9 +1,10 @@
 #!/usr/bin/python
-SIM_TTY = '/dev/ttyUSB0'
-GPS_TTY = '/dev/ttyUSB1'
-HTTP_SERVER = 'http://localhost:80'
-LED_gpio = 3
-button_gpio = 23
+SIM_TTY = '/dev/ttyUSB1' # sim serial address (dmesg | grep tty or)
+GPS_TTY = '/dev/ttyUSB0' # gps serial address
+HTTP_SERVER = 'http://localhost:80' # server address 
+LED_gpio = 3 # GPIO pin for LED 
+button_gpio = 23 # GPIO pin for Button
+RATE = 15 # rate (per second) that detector attempts to collect data 
 
 import threading # used for threads
 import serial # used for serial connection
@@ -19,6 +20,13 @@ from time import sleep # used to sleep
 
 q = Queue.Queue() # Using queue to share data between two threads
 
+import logging
+log = logging.getLogger()
+log.setLevel('DEBUG')
+handler = logging.StreamHandler()
+handler.setFormatter(logging.Formatter('[%(asctime)s] Detector.%(message)s'))
+log.addHandler(handler)
+
 def setupSIM():
     try:
         SIM_Serial = serial.Serial(port=SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
@@ -26,8 +34,7 @@ def setupSIM():
         sleep(.5) # Need to wait for device to receive commands
         SIM_Serial.close()
     except serial.SerialException as e:
-        print 'Error: SIM is not plugged in or the SIM_TTY is Incorrect!'
-        print 'Quitting Program.'
+        log.info('Error: SIM is not plugged in or the SIM_TTY is Incorrect!')
         quit()
 
 def setupGPS():
@@ -42,14 +49,13 @@ def setupGPS():
         sleep(.5)
         GPS_Serial.close() 
     except serial.SerialException as e:
-        print 'Error: GPS is not plugged in or the GPS_TTY is Incorrect!'
-        print 'Quitting Program.'
+        log.info('Error: GPS is not plugged in or the GPS_TTY is Incorrect!')
         quit()  
 
 class Data_Thread(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
-        self.running = False
+        self.running = True
         self.GPS_Thread = self.GPS_Poller()
         self.SIM_Thread = self.SIM_Poller()
     
@@ -62,22 +68,25 @@ class Data_Thread(threading.Thread):
             if not self.GPS_Thread.go and not self.SIM_Thread.go:
                 # ensures the gps and sim data are collect around the same time
                 if abs(self.GPS_Thread.run_time - self.SIM_Thread.run_time) < .4:
-                    cell_towers = self.SIM_Thread.SIM_Output # Gets Array of Cell tower data
-                    location = self.GPS_Thread.SIM_Output.split(',') # Gets string of GPS data and split into array
-                    time = location[1]
+                    log.info('Data: GPS Runtime: %s, SIM Runtime: %s' % (self.GPS_Thread.run_time, self.SIM_Thread.run_time))
 
+                    cell_towers = self.SIM_Thread.SIM_Output # Gets Array of Cell tower data
+                    location = self.GPS_Thread.GPS_Output.split(',') # Gets string of GPS data and split into array
+                    time = location[1]
                     # N, E is positive; S, W negative;
-                    lat = location[2] if location[3] == 'N' else lat = location[2] * -1
-                    lon = location[4] if location[5] == 'E' else lon = location[4] * -1
+                    lat = float(location[2]) if location[3] == 'N' else (float(location[2]) * -1)
+                    lon = float(location[4]) if location[5] == 'E' else (float(location[4]) * -1)
+                    lat = lat / 100.0
+                    lon = lon / 100.0
                     '''
                     if(location[3] == 'N'):
-                        lat = location[2] # N, E is positive
+                        lat = float(location[2] # N, E is positive
                     else:
-                        lat = location[2] * -1 # S, W is negative
+                        lat = float(location[2] * -1 # S, W is negative
                     if(location[5] == 'E'):
-                        lon = location[4]
+                        lon = float(location[4]
                     else:
-                        lon = location[4] * -1
+                        lon = float(location[4] * -1
                     '''
                     GPS_quality = location[6]
                     Satellites = location[7]
@@ -121,12 +130,13 @@ class Data_Thread(threading.Thread):
                         }
                         # Filters out data points with lower receive strengths,
                         # The data tends to be bad when the rxl is < 5~10
-                        if(rxl > 7):
-                            q.put(d)
-                            sleep(2)
+                        if(rxl > 9):
+                            log.info('Data: Added Document to queue')
+                            q.put(document)
+                            sleep(RATE)
                 else:
                     # gps couldn't get a fix or data was taken close at close enough intervaltx
-                    print 'TIMEDOUT'
+                    log.info('Data: TIMEOUT: GPS Runtime: %s, SIM Runtime: %s' % (self.GPS_Thread.run_time, self.SIM_Thread.run_time))
 
                 # Tells SIM and GPS thread to start again
                 self.GPS_Thread.go = True
@@ -150,17 +160,16 @@ class Data_Thread(threading.Thread):
                 if self.go:
                     start = time.time()
                     self.GPS_Serial.open()
-                    sleep(.2)
+                    sleep(.1)
                     self.GPS_Output = self.GPS_Serial.readline()
                     # Loops until has a valid GPS fix or until script has run 10 secs (~50 loops)
                     while not self.isValidLocation(self.GPS_Output) and time.time() - start < 10.0:
-                        print('NO FIX')
-                        sleep(.2) # Need to wait before collecting data
+                        sleep(.1) # Need to wait before collecting data
                         self.GPS_Output = self.GPS_Serial.readline()
                     self.GPS_Serial.close()
                     #self.GPS_Output = self.GPS_Output.split(',')
-                    go = False;
-                    run_time = time.time() - start
+                    self.go = False;
+                    self.run_time = time.time() - start
 
         def isValidLocation(self, output):
             check = output.split(',')
@@ -182,7 +191,7 @@ class Data_Thread(threading.Thread):
                     start = time.time()
                     self.SIM_Serial.open() 
                     self.SIM_Serial.write('AT+CENG?' + '\r\n')  # Sends Command to Display current engineering mode settings, serving cell and neighboring cells
-                    sleep(.2) # Need to wait for device to receive commands 
+                    sleep(.1) # Need to wait for device to receive commands 
                     # Reads in SIM900 output
                     self.SIM_Output = ''
                     while self.SIM_Serial.inWaiting() > 0:
@@ -191,13 +200,13 @@ class Data_Thread(threading.Thread):
                     # Removes Excess Lines and packs into array
                     self.SIM_Output = self.SIM_Output.split('\n')
                     self.SIM_Output = self.SIM_Output[4:11]
-                    go = False
-                    run_time = time.time() - start
+                    self.go = False
+                    self.run_time = time.time() - start
 
 class Logging_Thread(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
-        self.running = False
+        self.running = True
     
     def run(self):
         while self.running:
@@ -212,9 +221,12 @@ class Logging_Thread(threading.Thread):
                 r = requests.post(HTTP_SERVER, data=json.dumps(document))
                 if r.status_code != 200:
                     q.add(document)
+                    log.info('Logger: ERROR: Status code: %s' % r.status_code)
+                else:
+                    log.info('Logger: Uploaded Document')
             else:
-                print('NO CONNECTION')
-                sleep(.5)
+               log.info('Logger: ERROR: No Internet Connection')
+               sleep(1)
         sleep(1)
 
     def isConnected(self):
@@ -235,9 +247,6 @@ def main():
         Data.start() # Get this ish running
         Logger.start()
 
-        Data.run = True
-        Logger.run = True
-
         '''
 
         GPIO.setmode(GPIO.BCM)
@@ -250,10 +259,12 @@ def main():
         # Sets GPIO 2LED_gpio as Button input
         GPIO.setup(button_gpio, GPIO.IN, pull_up_down = GPIO.PUD_UP)
 
+
+        # this code is bad and will not work as intended (start/stop threads)
         run = True
         while True:
             if(GPIO.input(button_gpio) == 0 and run == True):
-                print 'Detected GPIO Button Press: Killing Threads'
+                log.info('Detected GPIO Button Press: Killing Threads')
                 GPIO.output(LED_gpio, GPIO.LOW)
                 Data.running = False
                 Logger.running = False
@@ -262,7 +273,7 @@ def main():
                 Logger.join()
                 exitBlink() # blinks to indicate threads are finished
             elif(GPIO.input(button_gpio) == 0 and run == False)
-                print 'Detected GPIO Button Press: Starting Threads'
+                log.info('Detected GPIO Button Press: Starting Threads')
                 Data.running = True
                 Logger.running = False
                 run = True
@@ -279,29 +290,27 @@ def main():
                 # Not running so don't blink
                 GPIO.output(LED_gpio,GPIO.LOW)
                 sleep(.5)
-
-
         '''
         while True:
             sleep(.5)
 
     except (KeyboardInterrupt, SystemExit): # when you press ctrl+c
-        print 'Detected KeyboardInterrupt: Killing Threads.'
+        log.info('Detected KeyboardInterrupt: Killing Threads.')
         Data.running = False
         Logger.running = False
         Data.join() # wait for the thread to finish what it's doing
         Logger.join()
     except serial.SerialException as e:
-        print 'Error: Something Got Unplugged!'
+        log.info('Error: Something Got Unplugged!')
         Data.running = False
         Logger.running = False
         Logger.join()
-        print 'Quiting Program.'
+        log.info('Quiting Program.')
         #exitBlink()
         quit()
 
     #exitBlink()
-    print 'Done.\nExiting.'
+    log.info('Exiting.')
 '''
 def exitBlink():
     for i in range(0,9):
