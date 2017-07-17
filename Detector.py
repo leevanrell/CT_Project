@@ -1,5 +1,5 @@
 #!/usr/bin/python
-SIM_TTY = '/dev/ttyUSB1' # sim serial address (dmesg | grep tty or)
+SIM_TTY = '/dev/ttyUSB0' # sim serial address (dmesg | grep tty or)
 GPS_TTY = '/dev/ttyUSB0' # gps serial address
 HTTP_SERVER = 'http://localhost:80' # server address 
 LED_gpio = 3 # GPIO pin for LED 
@@ -28,9 +28,13 @@ handler = logging.StreamHandler()
 handler.setFormatter(logging.Formatter('[%(asctime)s] [Detector.%(message)s'))
 log.addHandler(handler)
 
-def setup_check():
-    log.info('setup] checking TTY connections')
-
+def setup_TTY():
+    log.info('setup] setting TTY connections')
+    check_SIM(0)
+    check_GPS(0)
+    quit()
+def check_SIM(count):
+    global SIM_TTY
     try:
         Serial = serial.Serial(port=SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
         Serial.write('AT' + '\r\n') # sends AT command
@@ -40,30 +44,47 @@ def setup_check():
                 check = Serial.readline() # gets response
             else: 
                 Serial.readline()
-        if check != 'OK\r\n': # should be 'OK' if not, tty address is incorrect and quits
-            log.info('setup] Error: SIM_TTY misconfigured') 
-            quit()       
+        if check == 'OK\r\n':
+            log.info('setup] Set SIM_TTY to ' + SIM_TTY)
+        elif count < 10: # should be 'OK' if not, tty address is incorrect and quits
+            SIM_TTY = '/dev/ttyUSB' + str(count + 1)
+            check_SIM(count + 1)
+        else:
+            log.info('setup] Error: Could not configure SIM_TTY')
+            quit()     
 
     except serial.SerialException as e:
         if not os.geteuid() == 0:
             log.info('setup] Error: Script must be run as root!')
             quit()
+        elif count < 10:
+            check_SIM(count + 1)
         else:
-            log.info('setup] Error: SIM unit not plugged in')
-            quit()
+            log.info('setup] Error: Could not configure SIM_TTY')
+            quit()     
 
+def check_GPS(count):
+    global GPS_TTY
     try:
         Serial = serial.Serial(port=GPS_TTY, baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
-        '''
         sleep(.5)
         check = Serial.readline() 
-        if check[:1] != '$': 
-            log.info('setup] Error: GPS_TTY misconfigured') # checking for incorrect address again may be redundant (not sure if there is a scenario in which only one address may be incorrect)
-            quit()
-        '''
+        if check[:1] == '$':
+            log.info('setup] Set GPS_TTY to ' + GPS_TTY)
+        elif count < 10: 
+            GPS_TTY = '/dev/ttyUSB' + str(count + 1)
+            check_GPS(count + 1)
+        else:
+            log.info('setup] Error: Could not configure GPS_TTY')
+            quit()     
+
     except serial.SerialException as e:
-        log.info('setup] Error: GPS unit not plugged in')
-        quit()
+        if count < 10:
+            check_GPS(count + 1)
+        else:
+            log.info('setup] Error: Could not configure GPS_TTY')
+            quit()   
+
 
 def setup_SIM():
     log.info('setup] configuring SIM')
@@ -106,7 +127,7 @@ class Data_Thread(threading.Thread):
             # Only runs when the GPS and SIM Thread are finished    
             if not self.GPS_Thread.go and not self.SIM_Thread.go:
                 # ensures the gps and sim data are collected around the same time
-                if abs(self.GPS_Thread.run_time - self.SIM_Thread.run_time) < .4:
+                if self.GPS_Thread.run_time < 10.0 and abs(self.GPS_Thread.run_time - self.SIM_Thread.run_time) < .4:
                     log.info('Data] GPS runtime: %.2f, SIM runtime: %.2f' % (self.GPS_Thread.run_time, self.SIM_Thread.run_time))
                     cell_towers = self.SIM_Thread.SIM_Output # Gets Array of Cell tower data (contains ~5-6 lines each representing a cell tower in the surrounding area)
                     location = pynmea2.parse(self.GPS_Thread.GPS_Output) # converts GPS data to nmea object 
@@ -200,7 +221,7 @@ class Data_Thread(threading.Thread):
 
         def isValidLocation(self, output):
             check = output.split(',')
-            return len(output) != 0 and check[0] == '$GPGGA' and int(check[6]) != 0 # We only want GPGGA sentences with an Actual Fix (Fix != 0)
+            return len(output) != 0 and check[0] == '$GPGGA' and len(check[6]) != 0 and int(check[6]) != 0 # We only want GPGGA sentences with an Actual Fix (Fix != 0)
 
     class SIM_Poller(threading.Thread):
         def __init__(self):
@@ -271,7 +292,7 @@ class Logging_Thread(threading.Thread):
         return False
 
 def main():
-    setup_check() # Ensures correct TTY/Serial setup
+    setup_TTY() # Ensures correct TTY/Serial setup
     setup_SIM() # Configures SIM module to output Cell Tower Meta Data
     setup_GPS() # Configures GPS module to only output GPGGA Sentences and increase's GPS speed
     global Data, Logger 

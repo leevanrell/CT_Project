@@ -25,7 +25,7 @@ import logging
 log = logging.getLogger()
 log.setLevel('INFO')
 handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter('[%(asctime)s] [%(levelname)s] %(message)s'))
+handler.setFormatter(logging.Formatter('[%(asctime)s] %(message)s'))
 log.addHandler(handler)
 
 class S(BaseHTTPRequestHandler):
@@ -54,12 +54,12 @@ class S(BaseHTTPRequestHandler):
                     line = '<p>Cell Tower: %s-%s-%s-%s</p>\n<p>mymylnikov: %s</p>\n<img src="%s" WIDTH=960 HEIGHT=960>\n' % (MCC, MNC, LAC, Cell_ID, mylnikov, (Cell_ID + '.png'))
                     f.write(line)
             f.write('</body>\n</html>')
-        log.info('HTTP: Made new index.html')
+        log.info('[HTTP] Made new index.html')
 
     def _get_today(self, FOLDER):
         # checks if folder hasn't been created for today
         if not os.path.exists(FOLDER):
-            log.info('HTTP: Creating Today\'s Folder')
+            log.info('[HTTP] Creating Today\'s Folder')
             self._set_index(FOLDER)
         else:
             file = FOLDER + '/table.csv'
@@ -68,7 +68,7 @@ class S(BaseHTTPRequestHandler):
             difference = datetime.datetime.now() - timestamp
             # gets newer data if table.csv is older than 10 minutes old 
             if(difference.seconds > 1 * 60):
-                log.info('HTTP: Updating Data')
+                log.info('[HTTP] Updating Data')
                 self._set_index(FOLDER)
 
     def do_GET(self):
@@ -114,18 +114,18 @@ class S(BaseHTTPRequestHandler):
             self.end_headers()
             session.execute('''INSERT INTO DetectorData(time, MCC, MNC, LAC, Cell_ID, rxl, arfcn, bsic, lat, lon, satellites, gps_quality, altitude, altitude_units) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)''', 
                 (data['time'], data['MCC'], data['MNC'], data['LAC'], data['Cell_ID'], data['rxl'], data['arfcn'], data['bsic'], data['lat'], data['lon'], data['satellites'], data['GPS_quality'], data['altitude'], data['altitude_units']))
-            log.info('HTTP: Data has been added..')
+            log.info('[HTTP] Data has been added..')
 
         except ValueError,e :
             self.send_response(404)
             self.end_headers()
-            log.info('HTTP Error: Bad JSON')
+            log.info('[HTTP] Error: Bad JSON')
         return
 
 def run(server_class=HTTPServer, handler_class=S, port=80):
     server_address = ('localhost', port)
     httpd = server_class(server_address, handler_class)  
-    log.info('HTTP: Starting http server..')
+    log.info('[HTTP] Starting http server..')
     httpd.serve_forever()
 
 if __name__ == "__main__":
@@ -133,12 +133,12 @@ if __name__ == "__main__":
     if not os.geteuid() == 0:
         log.info('setup: Script must be run as root')
         quit()
-    log.info('CASS: Connecting to cluster')
+    log.info('[CASS] Connecting to cluster')
     cluster = Cluster([cluster_IP])
     session = cluster.connect()
     # Creates KEYSPACE if it does not exist (first time setup)
     session.execute('''CREATE KEYSPACE IF NOT EXISTS %s WITH replication = { 'class': 'SimpleStrategy', 'replication_factor': '2' }''' % KEYSPACE)
-    log.info('CASS: Connecting to %s' % KEYSPACE)
+    log.info('[CASS] Connecting to %s' % KEYSPACE)
     session.set_keyspace(KEYSPACE)
     #session.execute('DROP TABLE DetectorData')
     # Creates Table if it does not exist (first time setup)
