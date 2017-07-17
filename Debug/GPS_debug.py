@@ -33,7 +33,7 @@ class GPS_Poller(threading.Thread):
                 #self.GPS_Output = self.GPS_Output.split(',')
                 #self.go = False;
                 self.run_time = time.time() - start
-                print self.GPS_Output
+                print self.GPS_Output[:-2]
                 print self.run_time
 
     def isValidLocation(self, output):

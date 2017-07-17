@@ -1,52 +1,43 @@
 #!/usr/bin/env Rscript
-LOCATION <- 'auburn university' # Location for map;  
-PATH <- '/home/lee/git/CT_Project_Dev/HTTP_Server/data/'
-
-working_directory <- sprintf('%s%s', PATH, format(Sys.time(), '%Y-%m-%d'))
-setwd(working_directory)
+options(warn=-1) # disables those pesky warnings
+args <- commandArgs(TRUE)
+LOCATION <- args[1] # Location for map;  
+setwd(as.character(args[2]))
 
 library(ggplot2)
 library(ggmap)
-library(dplyr)
+library(dplyr) # dunno if i'm still using this, filter()?
 
-file_name <- 'table.csv' 
-file <- read.csv(file_name, sep = ',') # Gets today's CSV
-#head(file)
+table_file <- read.csv('table.csv' , sep = ',', colClasses=c('character')) 
+table_file$rxl <- as.numeric(table_file$rxl)
+table_file$lat <- as.numeric(table_file$lat)
+table_file$lon <- as.numeric(table_file$lon)
+table_frame = data.frame(table_file$Cell_ID, table_file$rxl, table_file$lon, table_file$lat)
+colnames(table_frame) = c('Cell_ID', 'rxl', 'lon', 'lat') 
 
-# Ensures the correct type for each attribute
-file$Cell_ID <- as.character(file$Cell_ID)
-file$rxl <- as.numeric(file$rxl)
-file$lat <- as.numeric(file$lat)
-file$lon <- as.numeric(file$lon)
+towers_file <- read.csv('towers.csv', sep = ',', colClasses=c('character')) 
+towers_file$lat <- as.numeric(towers_file$lat)
+towers_file$lon <- as.numeric(towers_file$lon)
+towers_frame = data.frame(towers_file$Cell_ID, towers_file$lon, towers_file$lat)
+colnames(towers_frame) = c('Cell_ID', 'lon', 'lat')
 
-#cell_frame = data.frame(file$Cell_ID, file$rxl, file$lon, file$lat)
-#colnames(cell_frame) = c('Cell_ID', 'rxl', 'lon', 'lat') # creates frame for later
-cell_frame = data.frame(file$rxl, file$lon, file$lat)
-colnames(cell_frame) = c('rxl', 'lon', 'lat') # creates frame for later
-
-auburn_map <- get_map(location = LOCATION, zoom = 14, scale = 'auto') # Loads map
-
-# Map wirnth all points
-"
-map <- ggmap(auburn_map, extent = 'device') + geom_point(data = cell_frame, aes(x = lon, y = lat, size = rxl), alpha = 1, size = 3) + geom_density2d(data = cell_frame, aes(x = lon, y = lat), size = 0.3) + stat_density2d(data =  cell_frame, aes(x = lon, y = lat, fill = ..level.., alpha = ..level..), size = 0.01, bins = 16, geom = 'polygon') + scale_fill_gradient(low = 'green', high = 'red') + scale_alpha(range = c(0, 0.3), guide = FALSE)
-"
-"
-map <- ggmap(auburn_map, extent = 'device') + geom_point(aes(x = lon, y = lat), colour = 'black',  alpha = 1, size = 2, data = cell_frame)
-"
-map <- ggmap(auburn_map, extent = "device") + geom_density2d(data = cell_frame, aes(x = lon, y = lat), size = 0.3) + 
-  stat_density2d(data = cell_frame, 
-                 aes(x = lon, y = lat, fill = ..level.., alpha = ..level..), size = 0.01, 
-                 bins = 16, geom = "polygon") + scale_fill_gradient(low = "green", high = "red") + 
-  scale_alpha(range = c(0, 0.3), guide = FALSE)
-png(filename = 'all.png', width=1280, height=1280)
+auburn_map <- get_map(location = LOCATION, zoom = 10, scale = 'auto') # Loads map
+# Creates map w/ all data points
+map <- ggmap(auburn_map, extent = 'device') + geom_point(data=towers_frame, aes(lon, lat), size=3, col='blue') + geom_point(data = table_frame, aes(x = lon, y = lat), alpha = 1, size = 2) #+ geom_point(data = towers_frame, aes(x = lon, y = lat, size = 3), alpha = 1, size = 1, col = 'blue')
+png(filename = 'all.png', width=960, height=960)
 print(map)
 dev.off()
 
-towers <- unique(c(as.character(cell_frame$Cell_ID)))
+auburn_map <- get_map(location = LOCATION, zoom = 14, scale = 'auto') # Loads map (changes zoom)
+#towers <- unique(c(as.character(table_frame$Cell_ID)))
+towers <- as.character(towers_frame$Cell_ID)
+# loops through each tower and creates a png for each
 for (tower in towers){
-	result <- filter(cell_frame, cell_frame$Cell_ID == tower)
-	one <- ggmap(auburn_map, extent = 'device') + geom_point(data = result, aes(x = lon, y = lat, size = rxl), alpha = 1, size = 3)
-	png(filename = sprintf('%s.png', tower), width=1280, height=1280)
+	filtered_table <- filter(table_frame, table_frame$Cell_ID == tower)
+	filtered_towers <- filter(towers_frame, towers_frame$Cell_ID == tower)
+	one <- ggmap(auburn_map, extent = 'device') + geom_point(data=filtered_towers, aes(lon, lat), size=3, col='blue')
+	one <- one + geom_point(data = filtered_table, aes(x = lon, y = lat, size = rxl), alpha = 1, size = 3) + geom_tile(data = table_frame, aes(x = lon, y = lat, alpha = rxl), fill = 'red')
+	png(filename = sprintf('%s.png', tower), width=960, height=960)
 	print(one)
 	dev.off()
 }

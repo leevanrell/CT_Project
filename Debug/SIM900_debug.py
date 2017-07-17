@@ -34,8 +34,8 @@ class SIM_Poller(threading.Thread):
                 self.SIM_Output = self.SIM_Output.split('\n')
                 self.SIM_Output = self.SIM_Output[4:11]
                 #self.go = False
-                print self.SIM_Output[0]
                 self.run_time = time.time() - start
+                self.go = False
 
 def setupSIM():
     try:
@@ -53,8 +53,42 @@ def main():
     SIM = SIM_Poller()
     try:
         SIM.start()
-        while True:
-            pass
+        run = True
+        while run:
+            if not SIM.go:
+                cell_towers = SIM.SIM_Output
+                for i in range(len(cell_towers)):
+                    # Data in first (serving) cell is ordered differently than first cell,
+                    # +CENG:0, '<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>'
+                    cell_tower = cell_towers[i].split(',')
+                    #cell_tower = cell_tower.split(',')
+                    arfcn = cell_tower[1][1:]         # Absolute radio frequency channel number
+                    rxl = cell_tower[2]               # Receive level (signal stregnth)
+                    if(i == 0):
+                        bsic = cell_tower[6]          # Base station identity code
+                        Cell_ID = cell_tower[7]       # Unique Identifier
+                        MCC = cell_tower[4]           # Mobile Country Code
+                        MNC = cell_tower[5]           # Mobile Network Code
+                        LAC = cell_tower[10]          # Location Area code
+                    # +CENG:1+,'<arfcn>, <rxl>, <bsic>, <cellid>, <mcc>, <mnc>, <lac>'    
+                    else:
+                        bsic = cell_tower[3]          # Base station identity code
+                        Cell_ID = cell_tower[4]       # Unique Identifier
+                        MCC = cell_tower[5]           # Mobile Country Code
+                        MNC = cell_tower[6]           # Mobile Network Code
+                        LAC = cell_tower[7][:-2]      # Location Area code
+                    print i
+                    print 'BSIC: ', bsic
+                    print 'CellID:', Cell_ID
+                    print 'MCC:', MCC
+                    print 'MNC: ', MNC
+                    print 'LAC: ', LAC
+                    print 'rxl: ', rxl
+                    print '\n'
+                    SIM.go = True
+                run = False
+
+
     except (KeyboardInterrupt, SystemExit): # when you press ctrl+c
         print '\nKilling Thread...'
         SIM.running = False
