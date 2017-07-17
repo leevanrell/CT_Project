@@ -32,7 +32,7 @@ def setup_TTY():
     log.info('setup] setting TTY connections')
     check_SIM(0)
     check_GPS(0)
-    quit()
+
 def check_SIM(count):
     global SIM_TTY
     try:
@@ -44,6 +44,7 @@ def check_SIM(count):
                 check = Serial.readline() # gets response
             else: 
                 Serial.readline()
+        log.info(check)
         if check == 'OK\r\n':
             log.info('setup] Set SIM_TTY to ' + SIM_TTY)
         elif count < 10: # should be 'OK' if not, tty address is incorrect and quits
@@ -69,6 +70,7 @@ def check_GPS(count):
         Serial = serial.Serial(port=GPS_TTY, baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
         sleep(.5)
         check = Serial.readline() 
+        log.info(check)
         if check[:1] == '$':
             log.info('setup] Set GPS_TTY to ' + GPS_TTY)
         elif count < 10: 
