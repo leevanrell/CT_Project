@@ -1874,3 +1874,11 @@ Error in args[1] : object of type 'closure' is not subsettable
 Execution halted
 Error in args[1] : object of type 'closure' is not subsettable
 Execution halted
+Error in setwd(as.character(args[2])) : cannot change working directory
+Execution halted
+Error in setwd(as.character(args[2])) : cannot change working directory
+Execution halted
+Error in setwd(as.character(args[2])) : cannot change working directory
+Execution halted
+Error in setwd(as.character(args[2])) : cannot change working directory
+Execution halted

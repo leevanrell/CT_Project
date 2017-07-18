@@ -37,17 +37,15 @@ class S(BaseHTTPRequestHandler):
     def _set_index(self, FOLDER):
         CasstoCSV.create_table(FOLDER, session, TABLE) # Gets exports cassandra table to csv
         CasstoCSV.create_towers(FOLDER, session, TABLE) # get list and towers and validates them
-        subprocess.call("nohup sudo Rscript Analysis.R %s %s" % (LOCATION, FOLDER), shell=True) # Generates maps of data
+        subprocess.call('nohup sudo Rscript Analysis.R %s $ %s' % (LOCATION, FOLDER), shell=True) # Generates maps of data
         #subprocess.Popen("sudo rm nohup.out", shell=True)
-        # Creates HTML file
-        with open(FOLDER + '/index.html', 'w') as f:
+        with open(FOLDER + '/index.html', 'w') as f: # Creates HTML file
             f.write('''<!DOCTYPE html>\n<html>\n<head>\n<title>Lee's HTTP Server</title>\n</head>\n<body bgcolor=white>\n<table border="0" cellpadding="10">\n<tr>\n<td>\n<h1><font color="black">Cell Tower Data</h1>\n</td>\n</tr>\n</table>\n''')
             reader = csv.reader(open(FOLDER + '/towers.csv'), delimiter=',')
-            #sortedreader = sorted(reader, key=labda row: row[3], reverse=True)
             line = '<p>All Cell Data</p>\n<img src="all.png" WIDTH=960 HEIGHT=960>\n' 
             f.write(line)
             first = True
-            for MCC, MNC, LAC, Cell_ID, mylnikov, lat, lon in sorted(reader, key=lambda row: row[3], reverse=True):
+            for MCC, MNC, LAC, Cell_ID, arfcn, mylnikov, lat, lon in sorted(reader, key=lambda row: row[3], reverse=True):
                 if first:
                     first = False
                 else:
@@ -57,8 +55,7 @@ class S(BaseHTTPRequestHandler):
         log.info('[HTTP] Made new index.html')
 
     def _get_today(self, FOLDER):
-        # checks if folder hasn't been created for today
-        if not os.path.exists(FOLDER):
+        if not os.path.exists(FOLDER): # checks if folder hasn't been created for today
             log.info('[HTTP] Creating Today\'s Folder')
             self._set_index(FOLDER)
         else:
@@ -66,21 +63,18 @@ class S(BaseHTTPRequestHandler):
             stat = os.stat(file)
             timestamp = datetime.datetime.fromtimestamp(os.path.getmtime(file)) # gets time when table.csv was last edited
             difference = datetime.datetime.now() - timestamp
-            # gets newer data if table.csv is older than 10 minutes old 
-            if(difference.seconds > 1 * 60):
+            if(difference.seconds > 1 * 60): # gets newer data if table.csv is older than 10 minutes old 
                 log.info('[HTTP] Updating Data')
                 self._set_index(FOLDER)
 
     def do_GET(self):
         FOLDER = PATH + str(datetime.date.today())
-        # Gets most up to date index.html
-        if self.path == '/':
+        if self.path == '/': # Gets most up to date index.html
             self._set_headers()
             self._get_today(FOLDER)
             with open(FOLDER + '/index.html', 'rb') as f:
                 self.wfile.write(f.read())
-        # Handles png GET requests
-        elif self.path[-4:] == '.png': #and (os.path.exists('data' + self.path) or os.path.exists(FOLDER + self.path)): 
+        elif self.path[-4:] == '.png': # Handles png GET requests
             self.send_response(200)
             self.send_header('Content-type', 'image/png')
             self.end_headers()
@@ -90,8 +84,7 @@ class S(BaseHTTPRequestHandler):
             else:
                 with open(FOLDER + '/' + self.path[1:], 'rb') as f:
                     self.wfile.write(f.read())
-        # Handles index requests from previous days (fmt: 127.0.0.1/YYYY-MM-DD/)
-        elif os.path.exists('data' + self.path + 'index.html'):
+        elif os.path.exists('data' + self.path + 'index.html'): # Handles index requests from previous days (fmt: 127.0.0.1/YYYY-MM-DD/)
             self._set_headers()
             with open('data' + self.path + 'index.html', 'rb') as f:
                 self.wfile.write(f.read())
@@ -144,7 +137,7 @@ if __name__ == "__main__":
     # Creates Table if it does not exist (first time setup)
     session.execute('''CREATE TABLE IF NOT EXISTS %s(time text,  MCC int, MNC int, LAC text, Cell_ID text, rxl int, arfcn text, bsic text, lat float, lon float, satellites int, gps_quality int, altitude float, altitude_units text,
         PRIMARY KEY(time, MCC, MNC, LAC, Cell_ID, rxl))
-        WITH CLUSTERING ORDER BY (MCC DESC, MNC ASC, LAC DESC, Cell_ID ASC, rxl DESC);'''% TABLE)
+        WITH CLUSTERING ORDER BY (MCC DESC, MNC ASC, LAC DESC, Cell_ID ASC, rxl DESC);''' % TABLE)
     if len(argv) == 2:
         run(port=int(argv[1]))
     else:
