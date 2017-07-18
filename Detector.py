@@ -11,7 +11,6 @@ import Queue # used for queue for threads
 import os # 
 import sys # used to check for sudo
 import socket # used to test connectivity
-#import RPi.GPIO as GPIO # used to control the Pi's GPIO pins
 import requests # used for POST requests
 import json # used for making jason object (json.dumps)
 import time # 
@@ -81,27 +80,27 @@ def setup_GPS_TTY():
     while count < 10:
         GPS_TTY = '/dev/ttyUSB%s' % count
         try:
-            # tries default baud rate first           \|/
-            Serial = serial.Serial(port=GPS_TTY, baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
-            sleep(.5)
-            check = Serial.readline()
-            Serial.close()
-            if check[:1] == '$': # looks for $
-                log.info('setup] set GPS_TTY to ' + GPS_TTY)
+            check = test_GPS(9600) # tries default baud rate first         
+            if check:
                 return True
             else:
-                # tries configured baud rate 
-                Serial = serial.Serial(port=GPS_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
-                sleep(.5)
-                check = Serial.readline()
-                Serial.close()
-                if check[:1] == '$': # looks for $
-                    log.info('setup] set GPS_TTY to ' + GPS_TTY)
+                check = test_GPS(115200) # tries configured baud rate 
+                if check: 
                     return True
                 else:
                     count += 1
         except serial.SerialException as e:
             count += 1 
+    return False
+
+def test_GPS(baudrate):
+    Serial = serial.Serial(port=GPS_TTY, baudrate=baudrate, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
+    sleep(.5)
+    check = Serial.readline()
+    Serial.close()
+    if check[:1] == '$': # looks for $
+        log.info('setup] set GPS_TTY to ' + GPS_TTY)
+        return True
     return False
 
 # configures sim unit to engineering mode -- outputs cell tower meta data
@@ -310,6 +309,7 @@ def main():
     setup_TTY() # configures TTY addresses for SIM and GPS
     setup_SIM() # configures SIM module to output cell tower meta data
     setup_GPS() # configures GPS module to only output GPGGA Sentences and increases operating speed
+    quit()
     global Data, Logger 
     Data = Data_Thread() # thread collects GPS and SIM data and adds to queue
     Logger = Logging_Thread() # Thread waits for Wifi connection and posts data to server
@@ -317,35 +317,10 @@ def main():
     Data.start() # Get this ish running
     Logger.start()
     try:        
-        '''
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setwarnings(False)
-        # Sets GPIO LED_gpio as LED output
-        GPIO.setup(LED_gpio, GPIO.OUT)
-        GPIO.output(LED_gpio, GPIO.LOW)
-        # Sets GPIO 2LED_gpio as Button input
-        GPIO.setup(button_gpio, GPIO.IN, pull_up_down = GPIO.PUD_UP)
-        # this code is bad and will not work as intended (start/stop threads)
-        run = True
-        while run:
-            if(not GPIO.input(button_gpio)):
-                log.info('Detected GPIO Button Press: Killing Threads')
-                GPIO.output(LED_gpio, GPIO.LOW)
-                Data.running = False
-                Logger.running = False
-                run = False
-                Data.join() # wait for the thread to finish what it's doing
-                Logger.join()
-                sleep(1)
-                exitBlink() # blinks to indicate threads are finished
-            else:
-                GPIO.output(LED_gpio, GPIO.HIGH)
-                sleep(.7)
-                GPIO.output(LED_gpio,GPIO.LOW)
-                sleep(.7)
-        '''
-        while Data.running and Logger.running:
-            sleep(.5)
+        if pi:
+            pi()
+        else:
+            laptop()
 
     except (KeyboardInterrupt, SystemExit): 
         log.info('main] detected KeyboardInterrupt: killing threads.')
@@ -355,7 +330,36 @@ def main():
         Logger.join()
 
     log.info('main] exiting.')
-'''
+
+def laptop():
+    while Data.running and Logger.running:
+        sleep(.5)
+
+def pi():
+    import RPi.GPIO as GPIO # used to control the Pi's GPIO pins
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setwarnings(False)
+    GPIO.setup(LED_gpio, GPIO.OUT)
+    GPIO.output(LED_gpio, GPIO.LOW)
+    GPIO.setup(button_gpio, GPIO.IN, pull_up_down = GPIO.PUD_UP)
+    run = True
+    while run:
+        if(not GPIO.input(button_gpio)):
+            log.info('Detected GPIO Button Press: Killing Threads')
+            GPIO.output(LED_gpio, GPIO.LOW)
+            Data.running = False
+            Logger.running = False
+            run = False
+            Data.join() # wait for the thread to finish what it's doing
+            Logger.join()
+            sleep(1)
+            exitBlink() # blinks to indicate threads are finished
+        else:
+            GPIO.output(LED_gpio, GPIO.HIGH)
+            sleep(.7)
+            GPIO.output(LED_gpio,GPIO.LOW)
+            sleep(.7)
+
 def exitBlink():
     for i in range(0,9):
         GPIO.output(LED_gpio, GPIO.HIGH)
@@ -364,11 +368,29 @@ def exitBlink():
         sleep(.5)
     GPIO.output(LED_gpio, GPIO.LOW)
     GPIO.cleanup()
-'''
+
 if __name__ == '__main__':
     from sys import argv
-    if len(argv) == 2:
+
+    if len(argv) > 3 :
+        log.info('setup] Error: too many arguments')
+        quit()
+    elif len(argv)  == 3 and argv[2] == 'pi':
         HTTP_SERVER =  'http://%s:80' % argv[1]
+        pi = True
+        log.info('setup] sending data to %s and running as pi' % HTTP_SERVER)
+    elif len(argv)  == 3 and argv[2] == 'laptop':
+        HTTP_SERVER =  'http://%s:80' % argv[1]
+        pi = True
+        log.info('setup] sending data to %s and running as laptop' % HTTP_SERVER)
+    elif len(argv) == 3:
+        log.info('setup] Error: device type \'%s\' not recongized' % argv[2])
+    elif len(argv) == 2:
+        HTTP_SERVER =  'http://%s:80' % argv[1]
+        pi = False
+        log.info('setup] sending data to %s and running as laptop' % HTTP_SERVER)
     else:
         HTTP_SERVER = 'http://localhost:80'
+        pi = False
+        log.info('setup] sending data %s and running as laptop' % HTTP_SERVER)
     main()
