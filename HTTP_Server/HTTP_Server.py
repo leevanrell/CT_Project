@@ -115,8 +115,8 @@ class S(BaseHTTPRequestHandler):
             log.info('[HTTP] Error: Bad JSON')
         return
 
-def run(server_class=HTTPServer, handler_class=S, port=80):
-    server_address = ('localhost', port)
+def run(server_class=HTTPServer, handler_class=S, ip='localhost', port=80):
+    server_address = (ip, port)
     httpd = server_class(server_address, handler_class)  
     log.info('[HTTP] Starting http server..')
     httpd.serve_forever()
@@ -139,6 +139,6 @@ if __name__ == "__main__":
         PRIMARY KEY(time, MCC, MNC, LAC, Cell_ID, rxl))
         WITH CLUSTERING ORDER BY (MCC DESC, MNC ASC, LAC DESC, Cell_ID ASC, rxl DESC);''' % TABLE)
     if len(argv) == 2:
-        run(port=int(argv[1]))
+        run(ip=argv[1])
     else:
         run()

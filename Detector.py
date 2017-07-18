@@ -1,8 +1,7 @@
 #!/usr/bin/python
-HTTP_SERVER = 'http://localhost:80' # server address 
+RATE = 5 # time delay between successfully adding a document to queue and trying to get another data sample
 LED_gpio = 3 # GPIO pin for LED 
 button_gpio = 23 # GPIO pin for Button
-RATE = 5 # time delay between successfully adding a document to queue and trying to get another data sample
 SIM_TTY = '' # sim serial address (dmesg | grep tty or)
 GPS_TTY = '' # gps serial address
 
@@ -46,6 +45,7 @@ def setup_TTY():
         log.info('setup] Error: failed to configure TTY')
         quit()
 
+# finds the correct tty address for the sim unit 
 def setup_SIM_TTY(): 
     count = 0
     global SIM_TTY
@@ -74,12 +74,14 @@ def setup_SIM_TTY():
                 count += 1
     return False
 
+# finds the correct tty address for the GPS unit
 def setup_GPS_TTY():
     count = 0
     global GPS_TTY
     while count < 10:
         GPS_TTY = '/dev/ttyUSB%s' % count
         try:
+            # tries default baud rate first           \|/
             Serial = serial.Serial(port=GPS_TTY, baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
             sleep(.5)
             check = Serial.readline()
@@ -88,22 +90,33 @@ def setup_GPS_TTY():
                 log.info('setup] set GPS_TTY to ' + GPS_TTY)
                 return True
             else:
-                count += 1
+                # tries configured baud rate 
+                Serial = serial.Serial(port=GPS_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
+                sleep(.5)
+                check = Serial.readline()
+                Serial.close()
+                if check[:1] == '$': # looks for $
+                    log.info('setup] set GPS_TTY to ' + GPS_TTY)
+                    return True
+                else:
+                    count += 1
         except serial.SerialException as e:
             count += 1 
     return False
 
+# configures sim unit to engineering mode -- outputs cell tower meta data
 def setup_SIM():
     log.info('setup] configuring SIM')
     try:
         SIM_Serial = serial.Serial(port=SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
-        SIM_Serial.write('AT+CENG=1,1' + '\r\n') # configures SIM unit to Engineering mode
+        SIM_Serial.write('AT+CENG=1,1' + '\r\n') # command to set to eng mode
         sleep(.5) # need to wait for device to receive commands
         SIM_Serial.close()
     except serial.SerialException as e:
         log.info('setup] Error: lost connection to SIM unit')
         quit()
 
+# configures gps unit; increase baudrate, output fmt, and output interval
 def setup_GPS():
     log.info('setup] configuring GPS')
     try:
@@ -111,7 +124,7 @@ def setup_GPS():
         sleep(.5)
         GPS_Serial.write('$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29<CR><LF> ' + '\r\n') #Configures GPS to only output GPGGA Sentences
         sleep(.5) # need to wait for device to receive commands
-        GPS_Serial.write('$PMTK220,100*2F<CR><LF>' + '\r\n') # configures Fix interval to 100 ms
+        GPS_Serial.write('$PMTK220,100*2F<CR><LF>' + '\r\n') # configures fix interval to 100 ms
         sleep(.5)
         GPS_Serial.write('$PMTK251,115200*1F<CR><LF>' + '\r\n') # configures Baud Rate to 115200
         sleep(.5)
@@ -120,6 +133,7 @@ def setup_GPS():
         log.info('setup] Error: lost connection to GPS unit')
         quit()  
 
+# thread handles data collection
 class Data_Thread(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
@@ -130,14 +144,14 @@ class Data_Thread(threading.Thread):
     def run(self):
         self.GPS_Thread.start()
         self.SIM_Thread.start()
-        while self.running: # Only runs when the GPS and SIM Thread are finished    
+        while self.running: # only runs when the GPS and SIM Thread are finished    
             if not self.GPS_Thread.go and not self.SIM_Thread.go: # ensures the gps and sim data are collected around the same time
                 if self.GPS_Thread.run_time < 10.0 and abs(self.GPS_Thread.run_time - self.SIM_Thread.run_time) < .4:
                     log.info('Data] GPS runtime: %.2f, SIM runtime: %.2f' % (self.GPS_Thread.run_time, self.SIM_Thread.run_time))
-                    cell_towers = self.SIM_Thread.SIM_Output # Gets Array of Cell tower data (contains ~5-6 lines each representing a cell tower in the surrounding area)
+                    cell_towers = self.SIM_Thread.SIM_Output # gets array of Cell tower data (contains ~5-6 lines each representing a cell tower in the surrounding area)
                     location = pynmea2.parse(self.GPS_Thread.GPS_Output) # converts GPS data to nmea object 
                     for i in range(len(cell_towers)):
-                        # Data in first (serving) cell is ordered differently than first cell,
+                        # data in first (serving) cell is ordered differently than first cell,
                         cell_tower = cell_towers[i].split(',')
                         arfcn = cell_tower[1][1:]         # Absolute radio frequency channel number
                         rxl = cell_tower[2]               # Receive level (signal stregnth)
@@ -169,7 +183,7 @@ class Data_Thread(threading.Thread):
                          'altitude': location.altitude,
                          'altitude_units': location.altitude_units
                         }
-                        if(rxl > 7 and rxl != 255 and MCC != '0'): # Filters out data points with lower receive strengths, the data tends to get 'dirty' when the rxl is < 5~10
+                        if(rxl > 7 and rxl != 255 and MCC != '0'): # filters out data points with lower receive strengths -- the data tends to get 'dirty' when the rxl is < 5~10
                             log.info('Data] added document to queue')
                             q.put(document)
                             sleep(RATE)
@@ -178,25 +192,26 @@ class Data_Thread(threading.Thread):
                 else: # gps couldn't get a fix (timed out) or data wasn't taken close enough together
                     log.info('Data] TIMEOUT: GPS runtime: %.2f, SIM runtime: %.2f' % (self.GPS_Thread.run_time, self.SIM_Thread.run_time))
 
-                # Tells SIM and GPS thread to start again
+                # tells SIM and GPS thread get more data
                 self.GPS_Thread.go = True
                 self.SIM_Thread.go = True
-        # Kills subthreads when data thread stops 
+        # kills subthreads when data thread stops 
         self.GPS_Thread.running = False
         self.SIM_Thread.running = False
 
+    # thread repsonsible for collecting data from gps unit
     class GPS_Poller(threading.Thread):
         def __init__(self):
             threading.Thread.__init__(self)
             self.GPS_Serial = serial.Serial(port=GPS_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
             self.GPS_Serial.close() 
-            self.running = True # Set to false when data thread stops
-            self.go = True # Set to False after it runs once, starts again after data thread finishes handling data
+            self.running = True # set to false when data thread stops
+            self.go = True # set to False after it runs once, starts again after data thread finishes handling data
             self.run_time = 0.0 #  time it takes to collect data
             self.GPS_Output = '' # output of gps unit; contains lat, lon, alt, etc..
 
         def run(self):
-            while self.running: # Runs when Data thread tells it to
+            while self.running: # runs when data thread tells it to
                 if self.go:
                     try:
                         start = time.time()
@@ -216,11 +231,12 @@ class Data_Thread(threading.Thread):
                         Data.join()
                         Logger.join()
                         #quit()
-
+        # checks string to confirm it contains valid coordinates                 
         def isValidLocation(self, output):
             check = output.split(',')
             return len(output) != 0 and check[0] == '$GPGGA' and len(check[6]) != 0 and int(check[6]) != 0 # We only want GPGGA sentences with an Actual Fix (Fix != 0)
 
+    # thread responsible for collecting data from sim unit
     class SIM_Poller(threading.Thread):
         def __init__(self):
             threading.Thread.__init__(self)
@@ -254,6 +270,7 @@ class Data_Thread(threading.Thread):
                         Logger.join()
                         #quit() # not sure if needed
 
+# thread responsible for sending data to server
 class Logging_Thread(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
@@ -280,9 +297,10 @@ class Logging_Thread(threading.Thread):
                sleep(1)
         sleep(2) # Wait for queue to fill
 
+    # checks to see if detector can connect to the http server
     def isConnected(self):
         try:
-            socket.create_connection(('www.google.com', 80)) # connect to the host -- tells us if the host is actually reachable
+            socket.create_connection((HTTP_SERVER, 80)) # connect to the host -- tells us if the host is actually reachable
             return True
         except OSError:
             pass
@@ -302,19 +320,15 @@ def main():
         '''
         GPIO.setmode(GPIO.BCM)
         GPIO.setwarnings(False)
-        
         # Sets GPIO LED_gpio as LED output
         GPIO.setup(LED_gpio, GPIO.OUT)
         GPIO.output(LED_gpio, GPIO.LOW)
-
         # Sets GPIO 2LED_gpio as Button input
         GPIO.setup(button_gpio, GPIO.IN, pull_up_down = GPIO.PUD_UP)
-
-
         # this code is bad and will not work as intended (start/stop threads)
         run = True
         while run:
-            if(GPIO.input(button_gpio)):
+            if(not GPIO.input(button_gpio)):
                 log.info('Detected GPIO Button Press: Killing Threads')
                 GPIO.output(LED_gpio, GPIO.LOW)
                 Data.running = False
@@ -322,6 +336,7 @@ def main():
                 run = False
                 Data.join() # wait for the thread to finish what it's doing
                 Logger.join()
+                sleep(1)
                 exitBlink() # blinks to indicate threads are finished
             else:
                 GPIO.output(LED_gpio, GPIO.HIGH)
@@ -350,6 +365,10 @@ def exitBlink():
     GPIO.output(LED_gpio, GPIO.LOW)
     GPIO.cleanup()
 '''
-
 if __name__ == '__main__':
+    from sys import argv
+    if len(argv) == 2:
+        HTTP_SERVER =  'http://%s:80' % argv[1]
+    else:
+        HTTP_SERVER = 'http://localhost:80'
     main()

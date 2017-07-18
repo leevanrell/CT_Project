@@ -1882,3 +1882,22 @@ Error in setwd(as.character(args[2])) : cannot change working directory
 Execution halted
 Error in setwd(as.character(args[2])) : cannot change working directory
 Execution halted
+
+Attaching package: ‘dplyr’
+
+The following objects are masked from ‘package:stats’:
+
+    filter, lag
+
+The following objects are masked from ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Map from URL : http://maps.googleapis.com/maps/api/staticmap?center=auburn+university&zoom=12&size=640x640&scale=2&maptype=terrain&language=en-EN&sensor=false
+Information from URL : http://maps.googleapis.com/maps/api/geocode/json?address=auburn%20university&sensor=false
+null device 
+          1 
+Map from URL : http://maps.googleapis.com/maps/api/staticmap?center=auburn+university&zoom=14&size=640x640&scale=2&maptype=terrain&language=en-EN&sensor=false
+Information from URL : http://maps.googleapis.com/maps/api/geocode/json?address=auburn%20university&sensor=false
+Error: object 'clea' not found
+Execution halted

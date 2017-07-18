@@ -1,3 +1,6 @@
-# Starts script on boot up!
+# Starts script on boot up
 # cd .bashrc; append ./path/to/launcher.sh/
-cd /home/pi/git/CT_Project/Debug; sudo nohup python Detector.py &
+# or 
+# sudo nano /etc/rc.local
+# sudo nohup python /home/lee/git/CT_Project/Detector.py &
+cd /home/pi/git/CT_Project/; sudo nohup python Detector.py &
