@@ -2,19 +2,20 @@
 RATE = 5 # time delay between successfully adding a document to queue and trying to get another data sample
 LED_gpio = 3 # GPIO pin for LED 
 button_gpio = 23 # GPIO pin for Button
-SIM_TTY = '' # sim serial address (dmesg | grep tty or)
-GPS_TTY = '' # gps serial address
 
-import threading # used for threads
 import serial # used for serial connection
+import argparse # handles args
+import threading # used for threads
 import Queue # used for queue for threads
 import os # 
 import sys # used to check for sudo
 import socket # used to test connectivity
 import requests # used for POST requests
 import json # used for making jason object (json.dumps)
-import time # 
+import csv # used for creating csv
 import pynmea2 # used for parsing gps/nmea sentences
+import datetime # used for creating csv
+import time # 
 from time import sleep # used to sleep
 
 import logging
@@ -26,7 +27,7 @@ log.addHandler(handler)
 
 q = Queue.Queue() # Using queue to share data between two threads
 
-def setup_TTY():
+def setup_TTY(): # finds the TTY addresses for SIM and GPS unit if available 
     log.info('setup] setting TTY connections')
     retry = 0 
     configured_SIM = setup_SIM_TTY() # tries to figure out tty address for SIM
@@ -44,8 +45,7 @@ def setup_TTY():
         log.info('setup] Error: failed to configure TTY')
         quit()
 
-# finds the correct tty address for the sim unit 
-def setup_SIM_TTY(): 
+def setup_SIM_TTY(): # finds the correct tty address for the sim unit 
     count = 0
     global SIM_TTY
     while count < 10: # iterates through the first 10 ttyUSB# addresses until it finds the correct address
@@ -184,6 +184,7 @@ class Data_Thread(threading.Thread):
                         }
                         if(rxl > 7 and rxl != 255 and MCC != '0'): # filters out data points with lower receive strengths -- the data tends to get 'dirty' when the rxl is < 5~10
                             log.info('Data] added document to queue')
+                            update_local(document)
                             q.put(document)
                             sleep(RATE)
                         else:
@@ -197,6 +198,20 @@ class Data_Thread(threading.Thread):
         # kills subthreads when data thread stops 
         self.GPS_Thread.running = False
         self.SIM_Thread.running = False
+
+    def update_local(document):
+        FOLDER = 'data/' + str(datetime.date.today())
+        FILE = FOLDER  + '/table.csv'
+        if not os.path.exists(FOLDER):
+            os.makedirs(FOLDER)
+            with open(FILE, 'w') as f:
+                writer = csv.writer(f)
+                writer.writerow(['time', 'MCC', 'MNC', 'LAC', 'Cell_ID', 'rxl', 'arfcn', 'bsic', 'lat', 'lon', 'satellites', 'GPS_quality', 'altitude', 'altitude_units']) # header row
+                writer.writerow(document)
+        else:
+            with open(FILE, 'a') as f:
+                writer = csv.writer(f)
+                writer.writerow(document)
 
     # thread repsonsible for collecting data from gps unit
     class GPS_Poller(threading.Thread):
@@ -284,7 +299,6 @@ class Logging_Thread(threading.Thread):
     def send_Data(self):
         while not q.empty(): # ensures there is a connection to internet/server
             if self.isConnected():
-                document = q.get() # gets data
                 r = requests.post(HTTP_SERVER, data=json.dumps(document)) # converts to json and sends post request
                 if r.status_code != 200:
                     q.add(document) # add back to queue if post fails
@@ -309,7 +323,6 @@ def main():
     setup_TTY() # configures TTY addresses for SIM and GPS
     setup_SIM() # configures SIM module to output cell tower meta data
     setup_GPS() # configures GPS module to only output GPGGA Sentences and increases operating speed
-    quit()
     global Data, Logger 
     Data = Data_Thread() # thread collects GPS and SIM data and adds to queue
     Logger = Logging_Thread() # Thread waits for Wifi connection and posts data to server
@@ -321,7 +334,6 @@ def main():
             pi()
         else:
             laptop()
-
     except (KeyboardInterrupt, SystemExit): 
         log.info('main] detected KeyboardInterrupt: killing threads.')
         Data.running = False
@@ -370,27 +382,22 @@ def exitBlink():
     GPIO.cleanup()
 
 if __name__ == '__main__':
-    from sys import argv
-
-    if len(argv) > 3 :
-        log.info('setup] Error: too many arguments')
-        quit()
-    elif len(argv)  == 3 and argv[2] == 'pi':
-        HTTP_SERVER =  'http://%s:80' % argv[1]
-        pi = True
-        log.info('setup] sending data to %s and running as pi' % HTTP_SERVER)
-    elif len(argv)  == 3 and argv[2] == 'laptop':
-        HTTP_SERVER =  'http://%s:80' % argv[1]
-        pi = True
-        log.info('setup] sending data to %s and running as laptop' % HTTP_SERVER)
-    elif len(argv) == 3:
-        log.info('setup] Error: device type \'%s\' not recongized' % argv[2])
-    elif len(argv) == 2:
-        HTTP_SERVER =  'http://%s:80' % argv[1]
-        pi = False
-        log.info('setup] sending data to %s and running as laptop' % HTTP_SERVER)
-    else:
+    #SIM_TTY = '' # sim serial address 
+    #GPS_TTY = '' # gps serial address
+    parser = argparse.ArgumentParser(description='A Cell Simulator Detector')
+    parser.add_argument('-m', '--mode', help='configures detector to run on laptop/pi; defaults to laptop') #, action='store', dest='mode')
+    parser.add_argument('-s', '--server', help='sets address of http server; defaults to localhost') #, action='store', dest='mode')
+    args = parser.parse_args()
+    if args.server is None:
         HTTP_SERVER = 'http://localhost:80'
+    elif(args.server[:4] != 'http'):
+        HTTP_SERVER = 'http://%s:80' % args.server
+    else:
+        HTTP_SERVER = args.server
+    if args.mode is None:
         pi = False
-        log.info('setup] sending data %s and running as laptop' % HTTP_SERVER)
+    elif(args.mode == 'pi'):
+        pi = True
+    else:
+        pi = False
     main()

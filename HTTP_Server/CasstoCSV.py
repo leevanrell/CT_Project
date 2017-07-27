@@ -13,28 +13,30 @@ import json
 def create_table(FOLDER, session, TABLE):
 	if not os.path.exists(FOLDER):
 	    os.makedirs(FOLDER)
-	file = FOLDER  + '/table.csv'
+	FILE = FOLDER  + '/table.csv'
 	order = 'time, MCC, MNC, LAC, Cell_ID, rxl, arfcn, bsic, lat, lon, satellites, GPS_quality, altitude, altitude_units'
 	rows = session.execute('SELECT %s FROM %s' % (order, TABLE)) # gets all data from cassandra
-	writer = csv.writer(open(file, 'w'))
-	writer.writerow(['time', 'MCC', 'MNC', 'LAC', 'Cell_ID', 'rxl', 'arfcn', 'bsic', 'lat', 'lon', 'satellites', 'GPS_quality', 'altitude', 'altitude_units']) # header row
-	writer.writerows(rows) # data from cassandra
+	with open(FILE, 'w') as f:
+		writer = csv.writer(f)
+		writer.writerow(['time', 'MCC', 'MNC', 'LAC', 'Cell_ID', 'rxl', 'arfcn', 'bsic', 'lat', 'lon', 'satellites', 'GPS_quality', 'altitude', 'altitude_units']) # header row
+		writer.writerows(rows) # data from cassandra
 
 def create_towers(FOLDER, session, TABLE):
-	file = FOLDER + '/towers.csv'
+	FILE = FOLDER + '/towers.csv'
 	order = 'MCC, MNC, LAC, Cell_ID, arfcn'
 	rows = session.execute('SELECT %s FROM %s' % (order, TABLE)) # gets all data from cassandra
 	unique = set()
 	for row in rows:
 		unique.add(row) # collect all unique towers and adds them into set
-	writer = csv.writer(open(file, 'w'))
-	writer.writerow(['MCC', 'MNC', 'LAC', 'Cell_ID',  'arfcn','mylnikov', 'lat', 'lon']) # header row
-	for row in unique:
-		r = requests.get('http://api.mylnikov.org/geolocation/cell?v=1.1&data=open&mcc=%s&mnc=%s&lac=%s&cellid=%s' % (row[0], row[1], int(row[2], 16), int(row[3], 16)))
-		response = json.loads(r.text)
-		writer.writerow([row[0], row[1], row[2], row[3], row[4], 'PASS', response['data']['lat'], response['data']['lon']]) if response['result'] == 200 else writer.writerow([row[0], row[1], row[2], row[3], row[4], 'FAIL', 'NULL', 'NULL'])
+	with open(FILE, 'w') as f:
+		writer = csv.writer(f)
+		writer.writerow(['MCC', 'MNC', 'LAC', 'Cell_ID',  'arfcn','mylnikov', 'lat', 'lon']) # header row
+		for row in unique:
+			r = requests.get('http://api.mylnikov.org/geolocation/cell?v=1.1&data=open&mcc=%s&mnc=%s&lac=%s&cellid=%s' % (row[0], row[1], int(row[2], 16), int(row[3], 16)))
+			response = json.loads(r.text)
+			writer.writerow([row[0], row[1], row[2], row[3], row[4], 'PASS', response['data']['lat'], response['data']['lon']]) if response['result'] == 200 else writer.writerow([row[0], row[1], row[2], row[3], row[4], 'FAIL', 'NULL', 'NULL'])
 
-if __name__ == '__main__':
+if __name__ == '__main__': # for running as a standalone script
 	FOLDER = 'data/' + str(datetime.date.today())
 	cluster_IP = 'localhost'
 	KEYSPACE = 'auresearch'
