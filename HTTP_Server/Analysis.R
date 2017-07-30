@@ -56,5 +56,3 @@ for (tower in towers){
 	dev.off()
 }
 
-
-clea
