@@ -1,18 +1,24 @@
 #!/usr/bin/python
-import serial # used for serial connection
-import argparse # handles args
-import threading # used for threads
-import Queue # used for queue for threads
-import os # 
-import sys # used to check for sudo
-import socket # used to test connectivity
-import requests # used for POST requests
-import json # used for making jason object (json.dumps)
-import csv # used for creating csv
-import pynmea2 # used for parsing gps/nmea sentences
-import datetime # used for creating csv
-import time # 
-from time import sleep # used to sleep
+LED_gpio = 3 # GPIO pin for LED 
+button_gpio = 23 # GPIO pin for Button
+SIM_TTY = '' # sim serial address 
+GPS_TTY = '' # gps serial address
+q = Queue.Queue() # Using queue to share data between two threads
+
+import serial 
+import argparse 
+import threading 
+import Queue 
+import os  
+import sys 
+import socket 
+import requests 
+import json 
+import csv 
+import pynmea2 
+import datetime 
+import time 
+from time import sleep 
 
 import logging
 log = logging.getLogger()
@@ -50,18 +56,14 @@ def setup_SIM_TTY(): # finds the correct tty address for the sim unit
             Serial.write('AT' + '\r\n') # sends AT command
             sleep(.5)
             for i in range(0, 5):
-                if(i == 2):
-                    check = Serial.readline() # gets response
-                else: 
-                    Serial.readline() # SIM unit likes to print extra lines -- must 'clean' buffer
+                check = Serial.readline()
+                if check == 'OK\r\n':
+                    log.info('setup] set SIM_TTY to ' + SIM_TTY)
+                    return True
             Serial.close()
-            if check == 'OK\r\n':
-                log.info('setup] set SIM_TTY to ' + SIM_TTY)
-                return True
-            else: # should be 'OK' if not, tty address is incorrect and moves on to the next one
-                count += 1  
         except serial.SerialException as e:# throws exception if there is no tty device on the current address
                 count += 1
+        count += 1  
     return False
 
 def setup_GPS_TTY(): # finds the correct tty address for the GPS unit
@@ -176,7 +178,7 @@ class Data_Thread(threading.Thread): # thread handles data collection
                             sleep(RATE)
                         else:
                             log.info('Data] dropped bad document: %s %s %s %s %s' % (MCC, MNC, LAC, Cell_ID, rxl))
-                else: # gps couldn't get a fix (timed out) or data wasn't taken close enough together
+                else: # gps couldn't get a fix (timed out) or data points weren't taken close enough together
                     log.info('Data] TIMEOUT: GPS runtime: %.2f, SIM runtime: %.2f' % (self.GPS_Thread.run_time, self.SIM_Thread.run_time))
 
                 # tells SIM and GPS thread get more data
@@ -186,7 +188,7 @@ class Data_Thread(threading.Thread): # thread handles data collection
         self.GPS_Thread.running = False
         self.SIM_Thread.running = False
 
-    def update_local(document):
+    def update_local(self, document):
         FOLDER = 'data/' + str(datetime.date.today())
         FILE = FOLDER  + '/table.csv'
         if not os.path.exists(FOLDER):
@@ -218,7 +220,7 @@ class Data_Thread(threading.Thread): # thread handles data collection
                         self.GPS_Serial.open()
                         sleep(.1)
                         self.GPS_Output = self.GPS_Serial.readline()
-                        while not self.isValidLocation(self.GPS_Output) and time.time() - start < 10.0: # Loops until has a valid GPS fix or until run time is more than 10 sec
+                        while not self.isValidLocation(self.GPS_Output) and time.time() - start < 10.0: # loops until has a valid GPS fix or until run time is more than 10 sec
                             sleep(.1) # Need to wait before collecting data
                             self.GPS_Output = self.GPS_Serial.readline()
                         self.GPS_Serial.close()
@@ -234,7 +236,7 @@ class Data_Thread(threading.Thread): # thread handles data collection
                      
         def isValidLocation(self, output): # checks string to confirm it contains valid coordinates
             check = output.split(',')
-            return len(output) != 0 and check[0] == '$GPGGA' and len(check[6]) != 0 and int(check[6]) != 0 # We only want GPGGA sentences with an Actual Fix (Fix != 0)
+            return len(output) != 0 and check[0] == '$GPGGA' and len(check[6]) != 0 and int(check[6]) != 0 # we only want GPGGA sentences with an actual fix (Fix != 0)
 
     class SIM_Poller(threading.Thread): # thread responsible for collecting data from sim unit
         def __init__(self):
@@ -277,7 +279,8 @@ class Logging_Thread(threading.Thread): # thread responsible for sending data to
     def run(self):
         while self.running:
             self.send_Data()
-        sleep(5)
+        Data.join() # waits for data thread to stop
+        sleep(2)
         self.send_Data() # makes sure queue is empty before finishing
     
     def send_Data(self):
@@ -310,7 +313,7 @@ def main():
     Data = Data_Thread() # thread collects GPS and SIM data and adds to queue
     Logger = Logging_Thread() # Thread waits for Wifi connection and posts data to server
     log.info('main] starting threads')
-    Data.start() # Get this ish running
+    Data.start() 
     Logger.start()
     try:        
         if pi:
@@ -331,8 +334,6 @@ def laptop():
 
 def pi():
     import RPi.GPIO as GPIO # used to control the Pi's GPIO pins
-    LED_gpio = 3 # GPIO pin for LED 
-    button_gpio = 23 # GPIO pin for Button
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
     GPIO.setup(LED_gpio, GPIO.OUT)
@@ -383,7 +384,4 @@ if __name__ == '__main__':
     else:
         pi = False
     RATE = args.rate
-    SIM_TTY = '' # sim serial address 
-    GPS_TTY = '' # gps serial address
-    q = Queue.Queue() # Using queue to share data between two threads
     main()

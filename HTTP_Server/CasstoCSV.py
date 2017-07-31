@@ -10,21 +10,21 @@ import os
 import requests
 import json
 
-def create_table(FOLDER, session, TABLE):
+def create_table(FOLDER, SESSION, TABLE):
 	if not os.path.exists(FOLDER):
 	    os.makedirs(FOLDER)
 	FILE = FOLDER  + '/table.csv'
 	order = 'time, MCC, MNC, LAC, Cell_ID, rxl, arfcn, bsic, lat, lon, satellites, GPS_quality, altitude, altitude_units'
-	rows = session.execute('SELECT %s FROM %s' % (order, TABLE)) # gets all data from cassandra
+	rows = SESSION.execute('SELECT %s FROM %s' % (order, TABLE)) # gets all data from cassandra
 	with open(FILE, 'w') as f:
 		writer = csv.writer(f)
 		writer.writerow(['time', 'MCC', 'MNC', 'LAC', 'Cell_ID', 'rxl', 'arfcn', 'bsic', 'lat', 'lon', 'satellites', 'GPS_quality', 'altitude', 'altitude_units']) # header row
 		writer.writerows(rows) # data from cassandra
 
-def create_towers(FOLDER, session, TABLE):
+def create_towers(FOLDER, SESSION, TABLE):
 	FILE = FOLDER + '/towers.csv'
 	order = 'MCC, MNC, LAC, Cell_ID, arfcn'
-	rows = session.execute('SELECT %s FROM %s' % (order, TABLE)) # gets all data from cassandra
+	rows = SESSION.execute('SELECT %s FROM %s' % (order, TABLE)) # gets all data from cassandra
 	unique = set()
 	for row in rows:
 		unique.add(row) # collect all unique towers and adds them into set
@@ -41,9 +41,9 @@ if __name__ == '__main__': # for running as a standalone script
 	cluster_IP = 'localhost'
 	KEYSPACE = 'auresearch'
 	cluster = Cluster([cluster_IP])
-	session = cluster.connect()
-	session.set_keyspace(KEYSPACE)
+	SESSION = cluster.connect()
+	SESSION.set_keyspace(KEYSPACE)
 	TABLE = KEYSPACE + '.DetectorData'
 
-	create_table(FOLDER, session, TABLE)
-	create_towers(FOLDER, session, TABLE)
+	create_table(FOLDER, SESSION, TABLE)
+	create_towers(FOLDER, SESSION, TABLE)
