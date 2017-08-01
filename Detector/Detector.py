@@ -3,7 +3,6 @@ LED_gpio = 3 # GPIO pin for LED
 button_gpio = 23 # GPIO pin for Button
 SIM_TTY = '' # sim serial address 
 GPS_TTY = '' # gps serial address
-q = Queue.Queue() # Using queue to share data between two threads
 
 import serial 
 import argparse 
@@ -19,6 +18,8 @@ import pynmea2
 import datetime 
 import time 
 from time import sleep 
+
+q = Queue.Queue() # Using queue to share data between two threads
 
 import logging
 log = logging.getLogger()
@@ -90,6 +91,7 @@ def test_GPS(baudrate):
     sleep(.5)
     check = Serial.readline()
     Serial.close()
+    log.info(check)
     if check[:1] == '$': # looks for $
         log.info('setup] set GPS_TTY to ' + GPS_TTY)
         return True

@@ -14,7 +14,6 @@ import CasstoCSV
 import csv
 from time import sleep
 
-# STEVE IRWIN'S REVENGE : SIR
 # setting up logging for server
 import logging
 log = logging.getLogger()

@@ -35,8 +35,8 @@ def create_towers(FOLDER, SESSION, TABLE):
 			r = requests.get('http://api.mylnikov.org/geolocation/cell?v=1.1&data=open&mcc=%s&mnc=%s&lac=%s&cellid=%s' % (row[0], row[1], int(row[2], 16), int(row[3], 16)))
 			response = json.loads(r.text)
 			writer.writerow([row[0], row[1], row[2], row[3], row[4], 'PASS', response['data']['lat'], response['data']['lon']]) if response['result'] == 200 else writer.writerow([row[0], row[1], row[2], row[3], row[4], 'FAIL', 'NULL', 'NULL'])
-
-if __name__ == '__main__': # for running as a standalone script
+'''
+if __name__ == '__main__': # for testing as a standalone script
 	FOLDER = 'data/' + str(datetime.date.today())
 	cluster_IP = 'localhost'
 	KEYSPACE = 'auresearch'
@@ -47,3 +47,4 @@ if __name__ == '__main__': # for running as a standalone script
 
 	create_table(FOLDER, SESSION, TABLE)
 	create_towers(FOLDER, SESSION, TABLE)
+'''
