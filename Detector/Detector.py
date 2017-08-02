@@ -91,7 +91,6 @@ def test_GPS(baudrate):
     sleep(.5)
     check = Serial.readline()
     Serial.close()
-    log.info(check)
     if check[:1] == '$': # looks for $
         log.info('setup] set GPS_TTY to ' + GPS_TTY)
         return True
@@ -318,7 +317,7 @@ def main():
     Data.start() 
     Logger.start()
     try:        
-        if pi:
+        if MODE:
             pi()
         else:
             laptop()
@@ -373,7 +372,7 @@ if __name__ == '__main__':
         log.info('setup] Error: script must be run as root!')
         quit()
     parser = argparse.ArgumentParser(description='SIR Detector')
-    parser.add_argument('-m', '--mode', default=False, help='configures detector to run on laptop/pi; options: pi/laptop') #, action='store', dest='mode')
+    parser.add_argument('-m', '--mode', default='pi', help='configures detector to run on laptop/pi; options: pi/laptop') #, action='store', dest='mode')
     parser.add_argument('-s', '--server', default="http://localhost:80", help='sets address and port of http server;') #, action='store', dest='mode')
     parser.add_argument('-r', '--rate', default=5, help='delay between successfully finding a data point and attempting to find another') #, action='store', dest='mode')  
     args = parser.parse_args()
@@ -382,8 +381,8 @@ if __name__ == '__main__':
     else:
         HTTP_SERVER = args.server
     if args.mode == 'pi':
-        pi = True
+        MODE = True
     else:
-        pi = False
+        MODE = False
     RATE = args.rate
     main()
