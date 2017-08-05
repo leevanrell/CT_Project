@@ -1,10 +1,9 @@
 #!/usr/bin/python
-
-import serial 
+from time import sleep 
 import threading 
 import Queue 
+import serial 
 import os  
-#import sys 
 import socket 
 import requests 
 import json 
@@ -12,17 +11,15 @@ import csv
 import pynmea2 
 import datetime 
 import time 
-#import logging
-from time import sleep 
+import shutil
+import logging
 
 class Detector(object):
     def __init__(self, log, HTTP_SERVER, SIM_TTY, GPS_TTY):
         self.log = log
+        self.HTTP_SERVER = HTTP_SERVER
         self.SIM_TTY = SIM_TTY # sim serial address 
         self.GPS_TTY = GPS_TTY # gps serial address
-        self.LED_gpio = LED_gpio
-        self.button_gpio = button_gpio
-        self.HTTP_SERVER = HTTP_SERVER
         self.q = Queue.Queue() # Using queue to share data between two threads
         self.Data = self.Data_Thread() # thread collects GPS and SIM data and adds to queue
         self.Logger = self.Logging_Thread() # Thread waits for Wifi connection and posts data to server
@@ -113,6 +110,7 @@ class Detector(object):
             FILE = FOLDER  + '/table.csv'
             if not os.path.exists(FOLDER):
                 os.makedirs(FOLDER)
+                clean_data() # removes old tables
                 with open(FILE, 'w') as f:
                     writer = csv.writer(f)
                     writer.writerow(['time', 'MCC', 'MNC', 'LAC', 'Cell_ID', 'rxl', 'arfcn', 'bsic', 'lat', 'lon', 'satellites', 'GPS_quality', 'altitude', 'altitude_units']) # header row
@@ -121,6 +119,13 @@ class Detector(object):
                 with open(FILE, 'a') as f:
                     writer = csv.writer(f)
                     writer.writerow(document)
+
+        def clean_data(self):
+            for FOLDER in os.listdir('data/'):
+                FILE = 'data/' + FOLDER + '/table.csv'
+                difference = datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(FILE)) # gets time when table.csv was last edited
+                if difference.days > 5:
+                    shutil.rmtree('data/' + FOLDER)
 
         class GPS_Poller(threading.Thread): # thread repsonsible for collecting data from gps unit
             def __init__(self):
@@ -156,8 +161,8 @@ class Detector(object):
                          
             def isValidLocation(self, output): # checks string to confirm it contains valid coordinates
                 check = output.split(',')
-                return len(output) != 0 and check[0] == '$GPGGA' and len(check[6]) != 0 and int(check[6]) != 0 # we only want GPGGA sentences with an actual fix (Fix != 0)
-
+                return len(check) >= 6 and check[0] == '$GPGGA' and int(check[6]) != 0 # we only want GPGGA sentences with an actual fix
+                
         class SIM_Poller(threading.Thread): # thread responsible for collecting data from sim unit
             def __init__(self):
                 threading.Thread.__init__(self)

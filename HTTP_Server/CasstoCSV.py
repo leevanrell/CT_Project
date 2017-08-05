@@ -3,12 +3,11 @@
 from cassandra import ConsistencyLevel
 from cassandra.cluster import Cluster
 from cassandra.query import SimpleStatement
-
 import datetime
-import csv
 import os
 import requests
 import json
+import csv
 
 def create_table(FOLDER, SESSION, TABLE):
 	if not os.path.exists(FOLDER):

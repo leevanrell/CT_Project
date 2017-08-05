@@ -1,7 +1,7 @@
 #!/usr/bin/python
+from time import sleep # used to sleep
 import serial # used for serial connection
 import os # 
-#import sys # used to check for sudo
 import socket # used to test connectivity
 import requests # used for POST requests
 import json # used for making jason object (json.dumps)
@@ -9,15 +9,15 @@ import csv # used for creating csv
 import pynmea2 # used for parsing gps/nmea sentences
 import datetime # used for creating csv
 import time # 
-#import logging
-from time import sleep # used to sleep
+import shutil
+import logging
 
 class Detector(object):
     def __init__(self, log, HTTP_SERVER, SIM_TTY, GPS_TTY):
         self.log = log
+        self.HTTP_SERVER = HTTP_SERVER
         self.SIM_TTY = SIM_TTY # sim serial address 
         self.GPS_TTY = GPS_TTY # gps serial address
-        self.HTTP_SERVER = HTTP_SERVER
 
     def run():
         running = True
@@ -101,13 +101,14 @@ class Detector(object):
 
     def isValidLocation(output): # checks string to confirm it contains valid coordinates
         check = output.split(',')
-        return len(output) != 0 and check[0] == '$GPGGA' and len(check[6]) != 0 and int(check[6]) != 0 # we only want GPGGA sentences with an actual fix (Fix != 0)
+        return len(output) != 0 and check[0] == '$GPGGA' and len(check) >= 6 and int(check[6]) != 0 # we only want GPGGA sentences with an actual fix (Fix != 0)
 
     def update_local(document):
             FOLDER = 'data/' + str(datetime.date.today())
             FILE = FOLDER  + '/table.csv'
             if not os.path.exists(FOLDER):
                 os.makedirs(FOLDER)
+                clean_data()
                 with open(FILE, 'w') as f:
                     writer = csv.writer(f)
                     writer.writerow(['time', 'MCC', 'MNC', 'LAC', 'Cell_ID', 'rxl', 'arfcn', 'bsic', 'lat', 'lon', 'satellites', 'GPS_quality', 'altitude', 'altitude_units']) # header row
@@ -116,6 +117,12 @@ class Detector(object):
                 with open(FILE, 'a') as f:
                     writer = csv.writer(f)
                     writer.writerow(document)
+    def clean_data():
+        for FOLDER in os.listdir('data/'):
+            FILE = 'data/' + FOLDER + '/table.csv'
+            difference = datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(FILE)) # gets time when table.csv was last edited
+            if difference.days > 5:
+                shutil.rmtree('data/' + FOLDER)
 
     def update_remote(document):
         start = time.time()
