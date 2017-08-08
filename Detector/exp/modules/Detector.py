@@ -12,39 +12,38 @@ import pynmea2
 import datetime 
 import time 
 import shutil
-import logging
 
 class Detector(object):
-    def __init__(self, log, HTTP_SERVER, SIM_TTY, GPS_TTY):
+
+    def __init__(self, log, HTTP_SERVER, SIM_TTY, GPS_TTY, RATE):
         self.log = log
         self.HTTP_SERVER = HTTP_SERVER
-        self.SIM_TTY = SIM_TTY # sim serial address 
-        self.GPS_TTY = GPS_TTY # gps serial address
+        self.RATE = RATE
         self.q = Queue.Queue() # Using queue to share data between two threads
-        self.Data = self.Data_Thread() # thread collects GPS and SIM data and adds to queue
+        self.Data = self.Data_Thread(SIM_TTY, GPS_TTY) # thread collects GPS and SIM data and adds to queue
         self.Logger = self.Logging_Thread() # Thread waits for Wifi connection and posts data to server
 
     def run(self):
         self.log.info('main] starting threads')
-        Data.start() 
-        Logger.start()
+        self.Data.start() 
+        self.Logger.start()
         try:        
             while Data.running and Logger.running:
                 sleep(.5)
         except (KeyboardInterrupt, SystemExit): 
             self.log.info('main] detected KeyboardInterrupt: killing threads.')
-            Data.running = False
-            Logger.running = False
-            Data.join() # wait for the threads to finish what it's doing
-            Logger.join()
+            self.Data.running = False
+            self.Logger.running = False
+            self.Data.join() # wait for the threads to finish what it's doing
+            self.Logger.join()
         self.log.info('main] exiting.')
 
     class Data_Thread(threading.Thread): # thread handles data collection
-        def __init__(self):
+        def __init__(self, SIM_TTY, GPS_TTY):
             threading.Thread.__init__(self)
             self.running = True
-            self.GPS_Thread = self.GPS_Poller()
-            self.SIM_Thread = self.SIM_Poller()
+            self.GPS_Thread = self.GPS_Poller(GPS_TTY)
+            self.SIM_Thread = self.SIM_Poller(SIM_TTY)
         
         def run(self):
             self.GPS_Thread.start()
@@ -53,51 +52,9 @@ class Detector(object):
                 if not self.GPS_Thread.go and not self.SIM_Thread.go: # only runs when the GPS and SIM Thread are finished 
                     if self.GPS_Thread.run_time < 10.0 and abs(self.GPS_Thread.run_time - self.SIM_Thread.run_time) < .4: # ensures the gps and sim data are collected around the same time
                         self.log.info('Data] GPS runtime: %.2f, SIM runtime: %.2f' % (self.GPS_Thread.run_time, self.SIM_Thread.run_time))
-                        cell_towers = self.SIM_Thread.SIM_Output # gets array of Cell tower data (contains ~5-6 lines each representing a cell tower in the surrounding area)
-                        location = pynmea2.parse(self.GPS_Thread.GPS_Output) # converts GPS data to nmea object 
-                        for i in range(len(cell_towers)):
-                            cell_tower = cell_towers[i].split(',')
-                            arfcn = cell_tower[1][1:]         # Absolute radio frequency channel number
-                            rxl = cell_tower[2]               # Receive level (signal stregnth)
-                            # data in first (serving) cell is ordered differently than first cell,
-                            if(i == 0): # +CENG:0, '<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>'
-                                bsic = cell_tower[6]          # Base station identity code
-                                Cell_ID = cell_tower[7]       # Unique Identifier
-                                MCC = cell_tower[4]           # Mobile Country Code
-                                MNC = cell_tower[5]           # Mobile Network Code
-                                LAC = cell_tower[10]          # Location Area code
-                            else: # +CENG:1+,'<arfcn>, <rxl>, <bsic>, <cellid>, <mcc>, <mnc>, <lac>'    
-                                bsic = cell_tower[3]          # Base station identity code
-                                Cell_ID = cell_tower[4]       # Unique Identifier
-                                MCC = cell_tower[5]           # Mobile Country Code
-                                MNC = cell_tower[6]           # Mobile Network Code
-                                LAC = cell_tower[7][:-2]      # Location Area code
-                            # puts data into json compatible format
-                            document = {'time': time.strftime('%m-%d-%y %H:%M:%S'),
-                             'MCC': int(MCC),
-                             'MNC': int(MNC),
-                             'LAC': LAC, 
-                             'Cell_ID': Cell_ID,
-                             'rxl': int(rxl), 
-                             'arfcn': arfcn,
-                             'bsic': bsic, 
-                             'lat': location.latitude,
-                             'lon': location.longitude, 
-                             'satellites':  int(location.num_sats),
-                             'GPS_quality': int(location.gps_qual),
-                             'altitude': location.altitude,
-                             'altitude_units': location.altitude_units
-                            }
-                            if(rxl > 7 and rxl != 255 and MCC != '0'): # filters out data points with lower receive strengths -- the data tends to get 'dirty' when the rxl is < 5~10
-                                self.log.info('Data] added document to queue')
-                                update_local(document)
-                                q.put(document)
-                                sleep(RATE)
-                            else:
-                                self.log.info('Data] dropped bad document: %s %s %s %s %s' % (MCC, MNC, LAC, Cell_ID, rxl))
+                        self.parse_data()
                     else: # gps couldn't get a fix (timed out) or data points weren't taken close enough together
                         self.log.info('Data] TIMEOUT: GPS runtime: %.2f, SIM runtime: %.2f' % (self.GPS_Thread.run_time, self.SIM_Thread.run_time))
-
                     # tells SIM and GPS thread get more data
                     self.GPS_Thread.go = True
                     self.SIM_Thread.go = True
@@ -105,7 +62,51 @@ class Detector(object):
             self.GPS_Thread.running = False
             self.SIM_Thread.running = False
 
-        def update_local(self, document):
+        def parse_data(self): 
+            cell_towers = self.SIM_Thread.SIM_Output # gets array of Cell tower data (contains ~5-6 lines each representing a cell tower in the surrounding area)
+            location = pynmea2.parse(self.GPS_Thread.GPS_Output) # converts GPS data to nmea object 
+            for i in range(len(cell_towers)):
+                cell_tower = cell_towers[i].split(',')
+                arfcn = cell_tower[1][1:]         # Absolute radio frequency channel number
+                rxl = cell_tower[2]               # Receive level (signal stregnth)
+                # data in first (serving) cell is ordered differently than first cell,
+                if(i == 0): # +CENG:0, '<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>'
+                    bsic = cell_tower[6]          # Base station identity code
+                    Cell_ID = cell_tower[7]       # Unique Identifier
+                    MCC = cell_tower[4]           # Mobile Country Code
+                    MNC = cell_tower[5]           # Mobile Network Code
+                    LAC = cell_tower[10]          # Location Area code
+                else: # +CENG:1+,'<arfcn>, <rxl>, <bsic>, <cellid>, <mcc>, <mnc>, <lac>'    
+                    bsic = cell_tower[3]          # Base station identity code
+                    Cell_ID = cell_tower[4]       # Unique Identifier
+                    MCC = cell_tower[5]           # Mobile Country Code
+                    MNC = cell_tower[6]           # Mobile Network Code
+                    LAC = cell_tower[7][:-2]      # Location Area code
+                # puts data into json compatible format
+                document = {'time': time.strftime('%m-%d-%y %H:%M:%S'),
+                 'MCC': int(MCC),
+                 'MNC': int(MNC),
+                 'LAC': LAC, 
+                 'Cell_ID': Cell_ID,
+                 'rxl': int(rxl), 
+                 'arfcn': arfcn,
+                 'bsic': bsic, 
+                 'lat': location.latitude, 
+                 'lon': location.longitude,  
+                 'satellites':  int(location.num_sats),
+                 'GPS_quality': int(location.gps_qual),
+                 'altitude': location.altitude, 
+                 'altitude_units': location.altitude_units #string
+                }
+                if(rxl > 7 and rxl != 255 and MCC != '0'): # filters out data points with lower receive strengths -- the data tends to get 'dirty' when the rxl is < 5~10
+                    self.log.info('Data] added document to queue')
+                    update_local(document) # puts document in csv on detector
+                    self.q.put(document) # puts document in queue to be sent to server
+                    sleep(self.RATE)
+                else:
+                    self.log.info('Data] dropped bad document: %s %s %s %s %s' % (MCC, MNC, LAC, Cell_ID, rxl))
+
+        def update_local(self, document): # appends document today's csv
             FOLDER = 'data/' + str(datetime.date.today())
             FILE = FOLDER  + '/table.csv'
             if not os.path.exists(FOLDER):
@@ -120,25 +121,26 @@ class Detector(object):
                     writer = csv.writer(f)
                     writer.writerow(document)
 
-        def clean_data(self):
+        def clean_data(self): # remove older csv files; runs when a new csv is created
             for FOLDER in os.listdir('data/'):
                 FILE = 'data/' + FOLDER + '/table.csv'
                 difference = datetime.datetime.now() - datetime.datetime.fromtimestamp(os.path.getmtime(FILE)) # gets time when table.csv was last edited
                 if difference.days > 5:
+                    log.info('Data] removing old folder: %s' % FOLDER)
                     shutil.rmtree('data/' + FOLDER)
 
         class GPS_Poller(threading.Thread): # thread repsonsible for collecting data from gps unit
-            def __init__(self):
+            def __init__(self, GPS_TTY):
                 threading.Thread.__init__(self)
-                self.GPS_Serial = serial.Serial(port=self.GPS_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
+                self.GPS_Serial = serial.Serial(port=GPS_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
                 self.GPS_Serial.close() 
                 self.running = True # set to false when data thread stops
                 self.go = True # set to False after it runs once, starts again after data thread finishes handling data
-                self.run_time = 0.0 #  time it takes to collect data
+                self.run_time = 0.0 #  time it takes to collect data; used to keep data collection synchronized
                 self.GPS_Output = '' # output of gps unit; contains lat, lon, alt, etc..
 
             def run(self):
-                while self.running: # runs when data thread tells it to
+                while self.running: 
                     if self.go:
                         try:
                             start = time.time()
@@ -150,23 +152,23 @@ class Detector(object):
                                 self.GPS_Output = self.GPS_Serial.readline()
                             self.GPS_Serial.close()
                             self.run_time = time.time() - start # calculates run time
-                            self.go = False # stops running until data thread is ready
+                            self.go = False # waits for data queue to handle data
                         except serial.SerialException as e:
                             self.log.info('GPS] Error: something got unplugged!') # error handling encase connection to sim unit is lost
-                            Data.running = False
-                            Logger.running = False
+                            self.Data.running = False
+                            self.Logger.running = False
                             self.running = False # is this necessary? 
-                            Data.join()
-                            Logger.join()
+                            self.Data.join()
+                            self.Logger.join()
                          
             def isValidLocation(self, output): # checks string to confirm it contains valid coordinates
                 check = output.split(',')
                 return len(check) >= 6 and check[0] == '$GPGGA' and int(check[6]) != 0 # we only want GPGGA sentences with an actual fix
                 
         class SIM_Poller(threading.Thread): # thread responsible for collecting data from sim unit
-            def __init__(self):
+            def __init__(self, SIM_TTY):
                 threading.Thread.__init__(self)
-                self.SIM_Serial = serial.Serial(port=self.SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
+                self.SIM_Serial = serial.Serial(port=SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
                 self.SIM_Serial.close()
                 self.running = True
                 self.go = True
@@ -190,11 +192,11 @@ class Detector(object):
                             self.go = False
                         except serial.SerialException as e:
                             self.log.info('SIM] Error: something got unplugged!') # error handling encase connection to gps unit is lost
-                            Data.running = False
-                            Logger.running = False
+                            self.Data.running = False
+                            self.Logger.running = False
                             self.running = False # is this necessary?
-                            Data.join()
-                            Logger.join()
+                            self.Data.join()
+                            self.Logger.join()
 
     class Logging_Thread(threading.Thread): # thread responsible for sending data to server
         def __init__(self):
@@ -204,16 +206,16 @@ class Detector(object):
         def run(self):
             while self.running:
                 self.send_Data()
-            Data.join() # waits for data thread to stop
-            sleep(2)
+            self.Data.join() # waits for data thread to stop
+            sleep(1)
             self.send_Data() # makes sure queue is empty before finishing
         
         def send_Data(self):
-            while not q.empty(): 
+            while not self.q.empty(): 
                 if self.isConnected(): # ensures there is a connection to internet/server
                     r = requests.post(self.HTTP_SERVER, data=json.dumps(document)) # converts to json and sends post request
                     if r.status_code != 200:
-                        q.add(document) # add back to queue if post fails
+                        self.q.add(document) # add back to queue if post fails
                         self.log.info('Logger] Error: status code: %s' % r.status_code)
                     else:
                         self.log.info('Logger] uploaded document')

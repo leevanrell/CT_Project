@@ -1,10 +1,12 @@
 #!/usr/bin/env Rscript
 options(warn=-1) # disables those pesky warnings
+# args is formated as: <LOCATION> $ <WORKING_DIR>
+# TODO: find and implement a library to handle the args
 args <- commandArgs(TRUE)
 LOCATION <- args[1]
-for (i in 2:length(args)) {
+for (i in 2:length(args)) { 
 	if (args[i] == '$') {
-		setwd(as.character(args[i + 1]))
+		setwd(as.character(args[i + 1])) # sets working directory
 		break
 	} else {
 		LOCATION <- paste(LOCATION, args[i], sep = ' ')
@@ -35,7 +37,7 @@ png(filename = 'all.png', width=960, height=960)
 print(map)
 dev.off()
 
-auburn_map <- get_map(location = LOCATION, zoom = 14, scale = 'auto') # Loads map (changes zoom)
+auburn_map <- get_map(location = LOCATION, zoom = 14, scale = 'auto') # (changes zoom)
 #towers <- unique(c(as.character(table_frame$Cell_ID)))
 towers <- as.character(towers_frame$Cell_ID)
 # loops through each tower and creates a png for each
@@ -55,4 +57,3 @@ for (tower in towers){
 	print(one)
 	dev.off()
 }
-

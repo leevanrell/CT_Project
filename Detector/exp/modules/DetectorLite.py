@@ -10,66 +10,69 @@ import pynmea2 # used for parsing gps/nmea sentences
 import datetime # used for creating csv
 import time # 
 import shutil
-import logging
 
 class Detector(object):
-    def __init__(self, log, HTTP_SERVER, SIM_TTY, GPS_TTY):
+    def __init__(self, log, HTTP_SERVER, SIM_TTY, GPS_TTY, RATE):
         self.log = log
         self.HTTP_SERVER = HTTP_SERVER
         self.SIM_TTY = SIM_TTY # sim serial address 
         self.GPS_TTY = GPS_TTY # gps serial address
+        self.RATE = RATE
 
     def run():
         running = True
         while running:
             try:
-                cell_towers = getCell() # gets array of Cell tower data (contains ~5-6 lines each representing a cell tower in the surrounding area)
-                location = pynmea2.parse(getLocation()) # converts GPS data to nmea object 
-                for i in range(len(cell_towers)):
-                    cell_tower = cell_towers[i].split(',')
-                    arfcn = cell_tower[1][1:]         # Absolute radio frequency channel number
-                    rxl = cell_tower[2]               # Receive level (signal stregnth)
-                    # data in first (serving) cell is ordered differently than first cell,
-                    if(i == 0): # +CENG:0, '<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>'
-                        bsic = cell_tower[6]          # Base station identity code
-                        Cell_ID = cell_tower[7]       # Unique Identifier
-                        MCC = cell_tower[4]           # Mobile Country Code
-                        MNC = cell_tower[5]           # Mobile Network Code
-                        LAC = cell_tower[10]          # Location Area code
-                    else: # +CENG:1+,'<arfcn>, <rxl>, <bsic>, <cellid>, <mcc>, <mnc>, <lac>'    
-                        bsic = cell_tower[3]          # Base station identity code
-                        Cell_ID = cell_tower[4]       # Unique Identifier
-                        MCC = cell_tower[5]           # Mobile Country Code
-                        MNC = cell_tower[6]           # Mobile Network Code
-                        LAC = cell_tower[7][:-2]      # Location Area code
-                    # puts data into json compatible format
-                    document = {'time': time.strftime('%m-%d-%y %H:%M:%S'),
-                     'MCC': int(MCC),
-                     'MNC': int(MNC),
-                     'LAC': LAC, 
-                     'Cell_ID': Cell_ID,
-                     'rxl': int(rxl), 
-                     'arfcn': arfcn,
-                     'bsic': bsic, 
-                     'lat': location.latitude,
-                     'lon': location.longitude, 
-                     'satellites':  int(location.num_sats),
-                     'GPS_quality': int(location.gps_qual),
-                     'altitude': location.altitude,
-                     'altitude_units': location.altitude_units
-                    }
-                    if(rxl > 7 and rxl != 255 and MCC != '0'): # filters out data points with lower receive strengths -- the data tends to get 'dirty' when the rxl is < 5~10
-                        log.info('Data] added document to queue')
-                        q.add(document)
-                        update_local(document)
-                        update_remote()
-                        sleep(RATE)
-                    else:
-                        log.info('Data] dropped bad document: %s %s %s %s %s' % (MCC, MNC, LAC, Cell_ID, rxl))
+                parse_data()
             except (KeyboardInterrupt, SystemExit):
                 running = False
         update_remote()
-            
+
+    def parse_data():
+        cell_towers = getCell() # gets array of Cell tower data (contains ~5-6 lines each representing a cell tower in the surrounding area)
+        location = pynmea2.parse(getLocation()) # converts GPS data to nmea object 
+        for i in range(len(cell_towers)):
+            cell_tower = cell_towers[i].split(',')
+            arfcn = cell_tower[1][1:]         # Absolute radio frequency channel number
+            rxl = cell_tower[2]               # Receive level (signal stregnth)
+            # data in first (serving) cell is ordered differently than first cell,
+            if(i == 0): # +CENG:0, '<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>'
+                bsic = cell_tower[6]          # Base station identity code
+                Cell_ID = cell_tower[7]       # Unique Identifier
+                MCC = cell_tower[4]           # Mobile Country Code
+                MNC = cell_tower[5]           # Mobile Network Code
+                LAC = cell_tower[10]          # Location Area code
+            else: # +CENG:1+,'<arfcn>, <rxl>, <bsic>, <cellid>, <mcc>, <mnc>, <lac>'    
+                bsic = cell_tower[3]          # Base station identity code
+                Cell_ID = cell_tower[4]       # Unique Identifier
+                MCC = cell_tower[5]           # Mobile Country Code
+                MNC = cell_tower[6]           # Mobile Network Code
+                LAC = cell_tower[7][:-2]      # Location Area code
+            # puts data into json compatible format
+            document = {'time': time.strftime('%m-%d-%y %H:%M:%S'),
+             'MCC': int(MCC),
+             'MNC': int(MNC),
+             'LAC': LAC, 
+             'Cell_ID': Cell_ID,
+             'rxl': int(rxl), 
+             'arfcn': arfcn,
+             'bsic': bsic, 
+             'lat': location.latitude,
+             'lon': location.longitude, 
+             'satellites':  int(location.num_sats),
+             'GPS_quality': int(location.gps_qual),
+             'altitude': location.altitude,
+             'altitude_units': location.altitude_units
+            }
+            if(rxl > 7 and rxl != 255 and MCC != '0'): # filters out data points with lower receive strengths -- the data tends to get 'dirty' when the rxl is < 5~10
+                log.info('Data] added document to queue')
+                q.add(document)
+                update_local(document)
+                update_remote()
+                sleep(self.RATE)
+            else:
+                log.info('Data] dropped bad document: %s %s %s %s %s' % (MCC, MNC, LAC, Cell_ID, rxl))
+                
     def getCell():
         try:
             SIM_Serial = serial.Serial(port=SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)

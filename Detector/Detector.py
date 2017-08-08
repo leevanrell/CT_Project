@@ -237,7 +237,7 @@ class Data_Thread(threading.Thread): # thread handles data collection
                      
         def isValidLocation(self, output): # checks string to confirm it contains valid coordinates
             check = output.split(',')
-            return len(output) != 0 and check[0] == '$GPGGA' and len(check[6]) != 0 and int(check[6]) != 0 # we only want GPGGA sentences with an actual fix (Fix != 0)
+            return len(output) >= 6 and check[0] == '$GPGGA' and int(check[6]) != 0 # we only want GPGGA sentences with an actual fix (Fix != 0)
 
     class SIM_Poller(threading.Thread): # thread responsible for collecting data from sim unit
         def __init__(self):
@@ -385,4 +385,5 @@ if __name__ == '__main__':
     else:
         MODE = False
     RATE = args.rate
+    log.info('setup] running as: %s, server: %s' % (args.mode, HTTP_SERVER))
     main()

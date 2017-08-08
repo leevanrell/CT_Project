@@ -71,10 +71,28 @@ class S(BaseHTTPRequestHandler):
     def set_index(self, FOLDER):
         CasstoCSV.create_table(FOLDER, session, TABLE) # Gets exports cassandra table to csv
         CasstoCSV.create_towers(FOLDER, session, TABLE) # get list and towers and validates them
-        subprocess.call('nohup sudo Rscript Analysis.R %s $ %s > /dev/null 2>&1' % (LOCATION, FOLDER), shell=True) # Generates maps of data
+        #subprocess.call('nohup sudo Rscript Analysis.R %s $ %s > /dev/null 2>&1' % (LOCATION, FOLDER), shell=True) # Generates maps of data
         with open(FOLDER + '/index.html', 'w') as f: # Creates HTML file
-            f.write('''<!DOCTYPE html>\n<html>\n<head>\n<title>Lee's HTTP Server</title>\n</head>\n<body bgcolor=white>\n<table border="0" cellpadding="10">\n<tr>\n<td>\n<h1><font color="black">Cell Tower Data</h1>\n</td>\n</tr>\n</table>\n''') 
-            f.write('<p>All Cell Data</p>\n<img src="%s/all.png" WIDTH=960 HEIGHT=960>\n' % str(datetime.date.today()))
+            f.writelines(l for l in open('data/test.html', 'r'))
+            '''
+            file = open(PATH + 'test.html')
+            order = 'time, MCC, MNC, LAC, Cell_ID, rxl, arfcn, bsic, lat, lon, satellites, GPS_quality, altitude, altitude_units'
+            rows = session.execute('SELECT %s FROM %s' % (order, TABLE)) # gets all data from cassandra
+            list = []
+            for row in rows:
+                list.append('{location: new google.maps.LatLng(%s,  %s), weight: %s},\n' % (row['lat'], row['lon'], row['rxl']))
+            temp = list[:-1]
+            temp = temp[:-3] + '\n'
+            list[:-1] = temp
+            str = ''
+            for row in list:
+                str += row
+            file.format(data=str)
+            #file.format($cell$=str)
+            f.write(str)
+            '''
+
+            '''
             reader = csv.reader(open(FOLDER + '/towers.csv'), delimiter=',')
             first = True
             for MCC, MNC, LAC, Cell_ID, arfcn, mylnikov, lat, lon in sorted(reader, key=lambda row: row[3], reverse=True):
@@ -83,6 +101,7 @@ class S(BaseHTTPRequestHandler):
                 else:
                     f.write('<p>Cell Tower: %s-%s-%s-%s</p>\n<p>mymylnikov: %s</p>\n<img src="%s" WIDTH=960 HEIGHT=960>\n' % (MCC, MNC, LAC, Cell_ID, mylnikov, (str(datetime.date.today()) + '/' + Cell_ID + '.png')))
             f.write('</body>\n</html>')
+            '''
         log.info('[HTTP] made new index.html')
 
     def do_HEAD(self):

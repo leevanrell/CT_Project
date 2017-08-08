@@ -1,13 +1,12 @@
 #!/usr/bin/python
 import serial
-import logging
 from time import sleep 
 
-def run(log_in):
+def run(logIN):
     global log, GPS_TTY, SIM_TTY
     GPS_TTY = ''
     SIM_TTY = ''
-    log = log_in
+    log = logIN
     setup_TTY() # configures TTY addresses for SIM and GPS
     setup_SIM() # configures SIM module to output cell tower meta data
     setup_GPS() # configures GPS module to only output GPGGA Sentences and increases operating speed
@@ -20,16 +19,18 @@ def setup_TTY(): # finds the TTY addresses for SIM and GPS unit if available
     configured_SIM = setup_SIM_TTY() # tries to figure out tty address for SIM
     while not configured_SIM and retry < 5: # setup_SIM_TTY is buggy so its worth trying again to find the correct address
         retry += 1
-        log.info('setup] retrying SIM TTY config')
+        log.info('setup] retrying SIM TTY config: %s' % retry)
         configured_SIM = setup_SIM_TTY() 
     retry = 0
     configured_GPS = setup_GPS_TTY()
     while not configured_GPS and retry < 5: # setup_SIM_TTY is also inconsistent -- running a few times guarantees finding the correct address if its exists
         retry += 1
-        log.info('setup] retrying GPS TTY config')
+        log.info('setup] retrying GPS TTY config: %s' % retry)
         configured_GPS = setup_GPS_TTY() 
     if not configured_GPS or not configured_SIM: # if gps or sim fail then program gives up
-        log.info('setup] Error: failed to configure TTY: GPS - %s, SIM - %s' % (configured_GPS, configured_SIM))
+        SIM_status = SIM_TTY if configured_SIM else 'address not found'
+        GPS_status = GPS_TTY if configured_GPS else 'address not found'
+        log.info('setup] Error: failed to configure TTY: SIM - %s, GPS - %s' % (SIM_status, GPS_status))
         quit()
 
 def setup_SIM_TTY(): # finds the correct tty address for the sim unit 
@@ -48,7 +49,7 @@ def setup_SIM_TTY(): # finds the correct tty address for the sim unit
                     return True
             Serial.close()
         except serial.SerialException as e:# throws exception if there is no tty device on the current address
-                count += 1
+            pass
         count += 1  
     return False
 
@@ -65,10 +66,9 @@ def setup_GPS_TTY(): # finds the correct tty address for the GPS unit
                 check = test_GPS(115200) # tries configured baud rate 
                 if check: 
                     return True
-                else:
-                    count += 1
         except serial.SerialException as e:
-            count += 1 
+            pass
+        count += 1 
     return False
 
 def test_GPS(baudrate):
