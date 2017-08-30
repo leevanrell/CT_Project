@@ -267,7 +267,7 @@ class Data_Thread(threading.Thread): # thread handles data collection
                         self.run_time = time.time() - start # calculates run time
                         self.go = False
                     except serial.SerialException as e:
-                        log.info('SIM] Error: something got unplugged!') # error handling encase connection to gps unit is lost
+                        log.error('SIM] something got unplugged!') # error handling encase connection to gps unit is lost
                         Data.running = False
                         Logger.running = False
                         self.running = False # is this necessary?

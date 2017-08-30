@@ -5,7 +5,7 @@ import urllib2
 import requests
 
 document = {'time': '194168.000', 
- 'MCC': '311',
+ 'MCC': '310',
  'MNC': '410',
  'LAC': '7935',
  'Cell_ID': '9821',
