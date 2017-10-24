@@ -1,7 +1,6 @@
-const CASS_IP = '127.0.0.1'
-const KEYSPACE = 'auresearch'
-const logDir = 'utils/log';
-
+const CASS_IP = '127.0.0.1';
+const KEYSPACE = 'auresearch';
+const logDir = './utils/log/';
 
 //gets ip
 var os = require('os');
@@ -32,6 +31,7 @@ db.execute('CREATE TABLE IF NOT EXISTS towers(MCC text, MNC text, LAC text, Cell
 
 //setting up logger
 const winston = require('winston');
+require('winston-daily-rotate-file');
 const moment = require('moment');
 const fs = require('fs');
 const env = process.env.NODE_ENV || 'development';
@@ -45,14 +45,22 @@ const logger = new (winston.Logger)({
     new (winston.transports.Console)({
       timestamp: time,
       colorize: true,
-      level: 'debug'
+      level: env === 'development' ? 'debug' : 'info',
     }),
     new (winston.transports.File)({
-      filename: `${logDir}/results.log`,
+      filename: `${logDir}/all.log`,
       timestamp: time,
       level: env === 'development' ? 'debug' : 'info',
       json: false
     }),
+    new (winston.transports.DailyRotateFile)({
+    	filename: logDir + '-results.log',
+    	timestamp: time,
+    	datePattern: 'yyyy-MM-dd',
+    	prepend: true,
+    	level: env === 'development' ? 'debug' : 'info',
+    	json: false
+    })
   ],
   exitOnError: false
 });

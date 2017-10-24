@@ -18,33 +18,30 @@ from time import sleep # used to sleep
 import logging
 log = logging.getLogger()
 log.setLevel('DEBUG')
-handler = logging.StreamHandler()
-handler.setFormatter(logging.Formatter('[%(asctime)s] [Detector.%(message)s'))
-log.addHandler(handler)
-
+file_handler = logging.FileHandler('log/log.log')
+file_handler.setFormatter(logging.Formatter('[%(asctime)s] [Detector.%(message)s'))
+stream_handler = logging.StreamHandler()
+stream_handler.setFormatter(logging.Formatter('[%(asctime)s] [Detector.%(message)s'))
+log.addHandler(file_handler)
+log.addHandler(stream_handler)
 
 def setup_TTY(): # finds the TTY addresses for SIM and GPS unit if available 
     log.info('setup] setting TTY connections')
-    retry = 0 
-    configured_SIM = setup_SIM_TTY() # tries to figure out tty address for SIM
-    while not configured_SIM and retry < 5: # setup_SIM_TTY is buggy so its worth trying again to find the correct address
-        retry += 1
-        log.info('setup] retrying SIM TTY config')
-        configured_SIM = setup_SIM_TTY() 
-    retry = 0
-    configured_GPS = setup_GPS_TTY()
-    while not configured_GPS and retry < 5: # setup_SIM_TTY is also inconsistent -- running a few times guarantees finding the correct address if its exists
-        retry += 1
-        log.info('setup] retrying GPS TTY config')
-        configured_GPS = setup_GPS_TTY() 
+    for i in range(0, 6): # setup_SIM_TTY is buggy so its worth trying again to find the correct address
+        configured_SIM = setup_SIM_TTY()
+        if configured_SIM:
+            break
+    for i in range(0, 6): # setup_SIM_TTY is also inconsistent -- running a few times guarantees finding the correct address if its exists
+        configured_GPS = setup_GPS_TTY()
+        if configured_GPS:
+            break 
     if not configured_GPS or not configured_SIM: # if gps or sim fail then program gives up
-        log.info('setup] Error: failed to configure TTY: GPS - %s, SIM - %s' % (configured_GPS, configured_SIM))
+        log.error('setup] failed to configure TTY: GPS - %s, SIM - %s' % (configured_GPS, configured_SIM))
         quit()
 
 def setup_SIM_TTY(): # finds the correct tty address for the sim unit 
-    count = 0
     global SIM_TTY
-    while count < 10: # iterates through the first 10 ttyUSB# addresses until it finds the correct address
+    for count in range(0, 10): # iterates through the first 10 ttyUSB# addresses until it finds the correct address
         SIM_TTY = '/dev/ttyUSB%s' % count 
         try:
             Serial = serial.Serial(port=SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
@@ -57,27 +54,18 @@ def setup_SIM_TTY(): # finds the correct tty address for the sim unit
                     return True
             Serial.close()
         except serial.SerialException as e:# throws exception if there is no tty device on the current address
-                count += 1
-        count += 1  
+            pass 
     return False
 
 def setup_GPS_TTY(): # finds the correct tty address for the GPS unit
-    count = 0
     global GPS_TTY
-    while count < 10:
+    for count in range(0, 10):
         GPS_TTY = '/dev/ttyUSB%s' % count
-        try:
-            check = test_GPS(9600) # tries default baud rate first         
-            if check:
+        try:        
+            if test_GPS(9600) or test_GPS(115200): # tries the default baudrate first
                 return True
-            else:
-                check = test_GPS(115200) # tries configured baud rate 
-                if check: 
-                    return True
-                else:
-                    count += 1
         except serial.SerialException as e:
-            count += 1 
+            pass
     return False
 
 def test_GPS(baudrate):
@@ -98,7 +86,7 @@ def setup_SIM(): # configures sim unit to engineering mode -- outputs cell tower
         sleep(.5) # need to wait for device to receive commands
         SIM_Serial.close()
     except serial.SerialException as e:
-        log.info('setup] Error: lost connection to SIM unit')
+        log.error('setup] lost connection to SIM unit')
         quit()
 
 def setup_GPS(): # configures gps unit; increase baudrate, output fmt, and output interval
@@ -114,7 +102,7 @@ def setup_GPS(): # configures gps unit; increase baudrate, output fmt, and outpu
         sleep(.5)
         GPS_Serial.close() 
     except serial.SerialException as e:
-        log.info('setup] Error: lost connection to GPS unit')
+        log.error('setup] lost connection to GPS unit')
         quit()  
 
 def start():
@@ -180,7 +168,7 @@ def getCell():
         SIM_Output = SIM_Output.split('\n')[4:11] # \Removes Excess Lines
         return SIM_Output
     except serial.SerialException as e:
-        log.info('GPS] Error: something got unplugged!') # error handling encase connection to sim unit is lost
+        log.error('GPS] something got unplugged!') # error handling encase connection to sim unit is lost
         quit()
 
 def getLocation():
@@ -194,7 +182,7 @@ def getLocation():
         GPS_Serial.close()
         return GPS_Output
     except serial.SerialException as e:
-        log.info('GPS] Error: something got unplugged!') # error handling encase connection to sim unit is lost
+        log.error('GPS] something got unplugged!') # error handling encase connection to sim unit is lost
         quit()
 
 def isValidLocation(output): # checks string to confirm it contains valid coordinates
@@ -206,30 +194,24 @@ def update_local(document):
         FILE = FOLDER  + '/table.csv'
         if not os.path.exists(FOLDER):
             os.makedirs(FOLDER)
-            with open(FILE, 'w') as f:
-                writer = csv.writer(f)
-                writer.writerow(['time', 'MCC', 'MNC', 'LAC', 'Cell_ID', 'rxl', 'arfcn', 'bsic', 'lat', 'lon', 'satellites', 'GPS_quality', 'altitude', 'altitude_units']) # header row
-                writer.writerow(document)
-        else:
-            with open(FILE, 'a') as f:
-                writer = csv.writer(f)
-                writer.writerow(document)
+        with open(FILE, 'a') as f:
+            writer = csv.writer(f)
+            writer.writerow(document)
 
 def update_remote():
     start = time.time()
     while not q.empty() and  time.time() - start < 10: # ensures there is a connection to internet/server
         if self.isConnected():
             document = q.get()
-            headers = {'content-type': 'application/json'}
-            r = requests.post(HTTP_SERVER, data=json.dumps(document), headers=headers)
+            r = requests.post(HTTP_SERVER, data=json.dumps(document), headers={'content-type': 'application/json'})
             #r = requests.post(HTTP_SERVER, data=json.dumps(document)) # converts to json and sends post request
             if r.status_code != 200:
                 q.add(document) # add back to queue if post fails
-                log.info('Logger] Error: status code: %s' % r.status_code)
+                log.error('Logger] status code: %s' % r.status_code)
             else:
                 log.info('Logger] uploaded document')
         else:
-           log.info('Logger] Error: no internet connection')
+           log.error('Logger] no internet connection')
            sleep(1)
 
 def isConnected(self): # checks to see if detector can connect to the http server
@@ -248,7 +230,7 @@ def main():
 
 if __name__ == '__main__':
     if not os.geteuid() == 0:
-        log.info('setup] Error: script must be run as root!')
+        log.error('setup] script must be run as root!')
         quit()
     parser = argparse.ArgumentParser(description='SIR Detector')
     parser.add_argument('-m', '--mode', default=False, help='configures detector to run on laptop/pi; options: pi/laptop') #, action='store', dest='mode')
