@@ -13,18 +13,18 @@ import logging
 from time import sleep 
 
 
-class Data_Thread(threading.Thread): # thread handles data collection
-    
-    Queue q = Queue.Queue()
+class Data_Thread(threading.Thread): 
 
-    def __init__(self, log, SIM_TTY, GPS_TTY):
+    def __init__(self, log, q, SIM_TTY, GPS_TTY, RATE):
         threading.Thread.__init__(self)
         self.running = True
+        self.log = log
+        self.q = q
         self.GPS_Thread = self.GPS_Poller()
         self.SIM_Thread = self.SIM_Poller()
-        self.log = log
         self.SIM_TTY = SIM_TTY
         self.GPS_TTY = GPS_TTY
+        self.Rate = RATE
     
     def run(self):
         self.GPS_Thread.start()
@@ -38,7 +38,7 @@ class Data_Thread(threading.Thread): # thread handles data collection
                     location = pynmea2.parse(self.GPS_Thread.GPS_Output)
                     for i in range(len(cell_towers)):
                         document = getDocument(cell_towers, location)
-                        if(rxl > 7 and rxl != 255 and MCC != '0'): # filters out data points with lower receive strengths -- the data tends to get 'dirty' when the rxl is < 5~10
+                        if(rxl != 255 and rxl > 7 and MCC != '0'): # filters out data points with lower receive strengths -- the data tends to get 'dirty' when the rxl is < 5~10
                             self.log.info('Data] added document to queue')
                             update_local(document)
                             q.put(document)
@@ -83,8 +83,8 @@ class Data_Thread(threading.Thread): # thread handles data collection
             writer = csv.writer(f)
             writer.writerow(document)
 
-    class GPS_Poller(threading.Thread): # thread repsonsible for collecting data from gps unit
-        def __init__(self):
+    class GPS_Poller(threading.Thread): 
+            def __init__(self):
             threading.Thread.__init__(self)
             self.GPS_Serial = serial.Serial(port=self.GPS_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
             self.GPS_Serial.close() 
@@ -114,11 +114,11 @@ class Data_Thread(threading.Thread): # thread handles data collection
                 else:
                     sleep(.1)
                      
-        def isValidLocation(self, output): # checks string to confirm it contains valid coordinates
+        def isValidLocation(self, output):
             check = output.split(',')
             return len(output) >= 6 and check[0] == '$GPGGA' and int(check[6]) != 0 # we only want GPGGA sentences with an actual fix (Fix != 0)
 
-    class SIM_Poller(threading.Thread): # thread responsible for collecting data from sim unit
+    class SIM_Poller(threading.Thread): 
         def __init__(self):
             threading.Thread.__init__(self)
             self.SIM_Serial = serial.Serial(port=self.SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)

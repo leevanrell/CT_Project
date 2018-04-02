@@ -1,33 +1,33 @@
 #!/usr/bin/python
 import serial 
 import logging
+from time import sleep
 
-Class setup():
+class Setup():
 
     def __init__(self, log):
         self.log = log
-        self.SIM_TTY;
-        self.GPS_TTY;
-        self.configured;
+        self.SIM_TTY = '';
+        self.GPS_TTY = '';
+        self.configured = False;
 
     def setup_TTY(self):  
-        log.info('setup] setting TTY connections')
+        self.log.info('setup] setting TTY connections')
         configured_SIM = False
         configured_GPS = False
         for i in range(0, 6): 
-            found_SIM = find_SIM_TTY()
+            found_SIM = self.find_SIM_TTY()
             if found_SIM:
-                configured_SIM = config_SIM();
+                configured_SIM = self.config_SIM();
                 break
         for i in range(0, 6): 
-            found_GPS = find_GPS_TTY()
+            found_GPS = self.find_GPS_TTY()
             if found_GPS:
-                configured_GPS = config_SIM()
+                configured_GPS = self.config_SIM()
                 break 
         if not configured_GPS or not configured_SIM: 
             self.log.error('setup] failed to configure TTY: GPS - %s, SIM - %s' % (configured_GPS, configured_SIM))
-            self.configured = False
-        else 
+        else:
             self.configured = True
         
 
@@ -65,7 +65,7 @@ Class setup():
         for count in range(0, 10):
             self.GPS_TTY = '/dev/ttyUSB%s' % count
             try:        
-                if test_GPS(9600) or test_GPS(115200): 
+                if self.test_GPS(9600) or self.test_GPS(115200): 
                     return True
             except serial.SerialException as e:
                 pass

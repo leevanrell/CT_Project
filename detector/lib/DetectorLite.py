@@ -1,44 +1,44 @@
 #!/usr/bin/python
-LED_gpio = 3 # GPIO pin for LED 
-button_gpio = 23 # GPIO pin for Button
-import serial # used for serial connection
-import argparse # handles args
-import Queue # used for queue for threads
-import os # 
-import sys # used to check for sudo
-import socket # used to test connectivity
-import requests # used for POST requests
-import json # used for making jason object (json.dumps)
-import csv # used for creating csv
-import pynmea2 # used for parsing gps/nmea sentences
-import datetime # used for creating csv
-import time # 
-from time import sleep # used to sleep
+QUEUE_SIZE = 10
+
+import serial 
+import argparse
+import Queue 
+import os  
+import sys 
+import socket 
+import requests 
+import json 
+import csv 
+import pynmea2
+import datetime 
+import time  
+from time import sleep
 
 Class DetectoryLite():
 
-    __init__(self, log, SIM_TTY, GPS_TTY):
-        self.run = False
+    __init__(self, log, HTTP_SERVER SIM_TTY, GPS_TTY, RATE):
+        self.run = True
+        self.log = log
+        self.HTTP_SERVER = HTTP_SERVER
         self.SIM_TTY = SIM_TTY
         self.GPS_TTY = GPS_TTY
+        self.RATE = RATE
 
     def start(self):
-
-        count = 0
         while self.run:
             try:
                 location = pynmea2.parse(getLocation())
-                cell_towers = getCell() 
+                cell_towers = self.getCell() 
                 for i in range(len(cell_towers)):
-                    document = getDocument(cell_towers, location)
+                    document = self.getDocument(cell_towers, location)
                     if(rxl > 7 and rxl != 255 and MCC != '0'): 
                         self.log.info('Data] added document to queue')
-                        update_local(document)
+                        self.update_local(document)
                         q.put(document)
-                        count++;
-                        if count >= 10:
-                            count = 0;
-                            update_remote()
+                        if q.qsize() >= QUEUE_SIZE:
+                            self.update_remote()
+                        sleep(RATE)
                     else:
                         self.log.info('Data] dropped bad document: %s %s %s %s %s' % (MCC, MNC, LAC, Cell_ID, rxl))
             except (KeyboardInterrupt, SystemExit):
@@ -57,7 +57,7 @@ Class DetectoryLite():
             SIM_Output = SIM_Output.split('\n')[4:11] 
             return SIM_Output
         except serial.SerialException as e:
-            log.error('GPS] something got unplugged!')
+            log.error('SIM] something got unplugged!')
             quit()
 
     def getLocation():
@@ -65,16 +65,16 @@ Class DetectoryLite():
             GPS_Serial = serial.Serial(port=GPS_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)     
             sleep(.1)
             GPS_Output = GPS_Serial.readline()
-            while not isValidLocation(self.GPS_Output): 
+            while not self.isValidLocation(self.GPS_Output): 
                 sleep(.1) 
                 self.GPS_Output = GPS_Serial.readline()
             GPS_Serial.close()
             return GPS_Output
         except serial.SerialException as e:
-            log.error('GPS] something got unplugged!') # error handling encase connection to sim unit is lost
+            log.error('GPS] something got unplugged!')
             quit()
 
-    def isValidLocation(output): # checks string to confirm it contains valid coordinates
+    def isValidLocation(output):
         check = output.split(',')
         return len(output) != 0 and check[0] == '$GPGGA' and len(check[6]) != 0 and int(check[6]) != 0 # we only want GPGGA sentences with an actual fix (Fix != 0)
 
@@ -107,23 +107,25 @@ Class DetectoryLite():
 
     def update_remote():
         start = time.time()
-        while not q.empty() and  time.time() - start < 10: # ensures there is a connection to internet/server
+        while not q.empty() and  time.time() - start < 10:
             if self.isConnected():
-                document = q.get()
-                r = requests.post(HTTP_SERVER, data=json.dumps(document), headers={'content-type': 'application/json'})
-                #r = requests.post(HTTP_SERVER, data=json.dumps(document)) # converts to json and sends post request
-                if r.status_code != 200:
-                    q.add(document) # add back to queue if post fails
-                    log.error('Logger] status code: %s' % r.status_code)
-                else:
-                    log.info('Logger] uploaded document')
+                try:
+                    document = q.get()
+                    r = requests.post(HTTP_SERVER, data=json.dumps(document), headers={'content-type': 'application/json'})
+                    if r.status_code != 200:
+                        q.add(document) 
+                        log.error('Logger] status code: %s' % r.status_code)
+                    else:
+                        log.info('Logger] uploaded document')
+                except OSError
+                    log.error('Logger] lost connection')
             else:
                log.error('Logger] no internet connection')
                sleep(1)
 
-    def isConnected(self): # checks to see if detector can connect to the http server
+    def isConnected(self):
         try:
-            socket.create_connection((HTTP_SERVER, 3000)) # connect to the host -- tells us if the host is actually reachable
+            socket.create_connection((HTTP_SERVER, 3000))
             return True
         except OSError:
             pass
