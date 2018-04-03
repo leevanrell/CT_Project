@@ -1,4 +1,6 @@
 #!/usr/bin/python
+
+LOCAL_BACKUP_LOCATION = 'data/backup/' 
 import threading 
 import Queue 
 import json 
@@ -27,9 +29,8 @@ class Data_Thread(threading.Thread):
         self.Rate = RATE
     
     def run(self):
-        self.GPS_Thread.start()
-        self.SIM_Thread.start()
-        # TODO: make execution control and error checking not terrible; implement semaphores better
+        start_GPS_and_SIM()
+        # TODO: make execution control and error checking not terrible
         while self.running and self.GPS_Thread.running and self.SIM_Thread.running: # breaks execution if gps or sim crashes   
             if not self.GPS_Thread.go and not self.SIM_Thread.go: # only runs when the GPS and SIM Thread are finished 
                 self.log.debug('Data] GPS runtime: %.2f, SIM runtime: %.2f' % (self.GPS_Thread.run_time, self.SIM_Thread.run_time))
@@ -45,7 +46,7 @@ class Data_Thread(threading.Thread):
                             sleep(RATE)
                         else:
                             self.log.info('Data] dropped bad document: %s %s %s %s %s' % (MCC, MNC, LAC, Cell_ID, rxl))
-                start_GPS_and_SIM()
+                resume_GPS_and_SIM()
         stop_GPS_and_SIM()
 
     def getDocument(cell_towers, location):
@@ -67,15 +68,19 @@ class Data_Thread(threading.Thread):
         return {'time': time.strftime('%m-%d-%y %H:%M:%S'), 'MCC': MCC, 'MNC': MNC, 'LAC': LAC, 'Cell_ID': Cell_ID, 'rxl': int(rxl), 'arfcn': arfcn, 'bsic': bsic, 'lat': location.latitude, 'lon': location.longitude, 'satellites':  int(location.num_sats), 'GPS_quality': int(location.gps_qual), 'altitude': location.altitude, 'altitude_units': location.altitude_units}
                         
     def start_GPS_and_SIM():
+        self.GPS_Thread.start()
+        self.SIM_Thread.start()
+
+    def stop _GPS_and_SIM():
+        self.GPS_Thread.running = False
+        self.SIM_Thread.running = False
+
+    def resume_GPS_and_SIM():
         self.GPS_Thread.go = True
         self.SIM_Thread.go = True
 
-    def stop _GPS_and_SIM():
-        self.GPS_Thread.go = False
-        self.SIM_Thread.go = False
-
     def update_local(self, document):
-        FOLDER = 'data/' + str(datetime.date.today())
+        FOLDER = LOCAL_BACKUP_LOCATION + str(datetime.date.today())
         FILE = FOLDER  + '/table.csv'
         if not os.path.exists(FOLDER):
             os.makedirs(FOLDER)

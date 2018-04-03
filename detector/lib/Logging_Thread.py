@@ -24,8 +24,7 @@ class Logging_Thread(threading.Thread):
         while self.running:
             self.send_Data()
             sleep(1)
-        Data.join()
-        sleep(.1)
+        sleep(1) #Sleep to wait for Data Thread to finish up (Data.join is buggy)
         self.send_Data() 
     
     def send_Data(self):

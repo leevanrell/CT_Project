@@ -1,6 +1,7 @@
 #!/usr/bin/python
 LED_gpio = 3 # GPIO pin for LED 
 button_gpio = 23 # GPIO pin for Button
+LOG_LOCATION = 'data/log/'
 
 import argparse 
 import configparser
@@ -17,7 +18,8 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 import logging
 log = logging.getLogger()
 log.setLevel('DEBUG')
-file_handler = logging.FileHandler('data/log/log.log')
+LOG_FILE = LOG_LOCATION + str(datetime.date.today()) + '.log'
+file_handler = logging.FileHandler(LOG_FILE)
 file_handler.setFormatter(logging.Formatter('[%(asctime)s] [Detector.%(message)s'))
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(logging.Formatter('[%(asctime)s] [Detector.%(message)s'))
@@ -28,7 +30,7 @@ def main():
     setup = Setup(log);
     setup.setup_TTY();
     if not setup.configured:
-        log.info('main] setup failed. exiting')
+        log.info('main] setup failed. exiting.')
         quit()        
     if MODE:
         pi() 
@@ -53,8 +55,8 @@ def laptop():
         while Data.running and Logger.running:
             pass
         Data.running = False
-        Logger.running = False
         Data.join()
+        Logger.running = False
         Logger.join()
     except (KeyboardInterrupt, SystemExit): 
         log.info('main] detected KeyboardInterrupt: killing threads.')
@@ -64,25 +66,13 @@ def laptop():
         Logger.join()
 
 def pi():
-    import RPi.GPIO as GPIO 
-    import lib.DetectorLite as Detector
-
-    detector = Detector.Detector(log, HTTP_SERVER, setup.SIM_TTY, setup.GPS_TTY, RATE)
+    from lib.DetectorLite import DetectorLite
+    detector = DetectorLite(log, HTTP_SERVER, setup.SIM_TTY, setup.GPS_TTY, RATE)
     try:
         detector.start()
     except (KeyboardInterrupt, SystemExit):
         log.info('main] detected KeyboardInterrupt: stopping job')
         detector.run = False
-
-
-def exitBlink():
-    for i in range(0,9):
-        GPIO.output(LED_gpio, GPIO.HIGH)
-        sleep(.1)
-        GPIO.output(LED_gpio, GPIO.LOW)
-        sleep(.5)
-    GPIO.output(LED_gpio, GPIO.LOW)
-    GPIO.cleanup()
 
 def isPi():
     try:

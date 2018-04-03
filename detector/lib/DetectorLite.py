@@ -97,7 +97,7 @@ Class DetectoryLite():
         return {'time': time.strftime('%m-%d-%y %H:%M:%S'), 'MCC': MCC, 'MNC': MNC, 'LAC': LAC, 'Cell_ID': Cell_ID, 'rxl': int(rxl), 'arfcn': arfcn, 'bsic': bsic, 'lat': location.latitude, 'lon': location.longitude, 'satellites':  int(location.num_sats), 'GPS_quality': int(location.gps_qual), 'altitude': location.altitude, 'altitude_units': location.altitude_units}
 
     def update_local(document):
-            FOLDER = 'data/' + str(datetime.date.today())
+            FOLDER = 'data/backup/' + str(datetime.date.today())
             FILE = FOLDER  + '/table.csv'
             if not os.path.exists(FOLDER):
                 os.makedirs(FOLDER)
