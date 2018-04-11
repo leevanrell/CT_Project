@@ -34,7 +34,7 @@ class Data_Thread(threading.Thread):
         while self.running and self.GPS_Thread.running and self.SIM_Thread.running: # breaks execution if gps or sim crashes   
             if not self.GPS_Thread.go and not self.SIM_Thread.go: # only runs when the GPS and SIM Thread are finished 
                 self.log.debug('Data] GPS runtime: %.2f, SIM runtime: %.2f' % (self.GPS_Thread.run_time, self.SIM_Thread.run_time))
-                if self.GPS_Thread.run_time < self.TIMEOUT and abs(self.GPS_Thread.run_time - self.SIM_Thread.run_time) < .4: 
+                if self.GPS_Thread.run_time < self.TIMEOUT and abs(self.GPS_Thread.run_time - self.SIM_Thread.run_time) < .4 and self.GPS_Thread.isValidLocation(self.GPS_Thread.GPS_Output): 
                     cell_towers = self.SIM_Thread.SIM_Output 
                     location = pynmea2.parse(self.GPS_Thread.GPS_Output)
                     for i in range(len(cell_towers)):

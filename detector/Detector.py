@@ -92,7 +92,7 @@ if __name__ == '__main__':
     HTTP_SERVER = config['DEFAULT']['HTTP_Server']
     TIMEOUT = int(config['DEFAULT']['TIMEOUT'])
     RATE = int(config['DEFAULT']['RATE'])
-    MODE = True
+    MODE = isPi()
     parser = argparse.ArgumentParser(description='SIR Detector')
     parser.add_argument('-s', '--server', default=HTTP_SERVER, help='sets address and port of http server;') #, action='store', dest='mode')
     parser.add_argument('-t', '--timeout', default=TIMEOUT, help='amount of time detector takes to get data before giving up;')

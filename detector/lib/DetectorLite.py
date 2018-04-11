@@ -33,11 +33,11 @@ class DetectorLite():
             try:
                 location = self.getLocation()
                 cell_towers = self.getCell()
-                if location != "error" and cell_towers != "error":
+                if location[:5] != "error" and cell_towers[:5] != "error":
                     location = pynmea2.parse(location)
                     for i in range(len(cell_towers)):
                         document = self.getDocument(cell_towers[i], location)
-                        if(document['rxl'] > 7 and document['rxl'] != 255 and document['MCC'] != '0'): 
+                        if(document['GPS_quality'] != 0 and document['rxl'] > 7 and document['rxl'] != 255 and document['MCC'] != '0'): 
                             self.log.info('Data] added document to queue')
                             self.update_local(document)
                             q.put(document)
@@ -45,11 +45,9 @@ class DetectorLite():
                                 self.update_remote()
                             sleep(self.RATE)
                         else:
-                            self.log.debug('Data] dropped bad document: %s %s %s %s %s' % (document['MCC'], document['MNC'], document['LAC'], document['Cell_ID'], document['rxl']))
-                else:
-                    self.log.debug("Data] error detected. retrying")
+                            self.log.debug('Data] dropped bad document: %s %s %s %s %s %s' % (document['GPS_quality'], document['MCC'], document['MNC'], document['LAC'], document['Cell_ID'], document['rxl']))
             except (KeyboardInterrupt, SystemExit):
-                run = False
+                self.run = False
         update_remote()
             
     def getCell(self):
@@ -93,7 +91,10 @@ class DetectorLite():
                 sleep(.1) 
                 self.GPS_Output = GPS_Serial.readline()
             GPS_Serial.close()
-            return GPS_Output
+            if self.isValidLocation(GPS_Output):
+                return GPS_Output
+            else:
+                return 'error: bad gps data'
         except serial.SerialException as e:
             self.log.error('GPS] something got unplugged!') 
             # TODO: make execution control and error checking not terrible; implement semaphores better
@@ -111,7 +112,7 @@ class DetectorLite():
             else:
                 self.SIM_TTY = setup.SIM_TTY
                 self.GPS_TTY = setup.GPS_TTY
-            return "error"
+            return 'error'
 
     def isValidLocation(self, output):
         check = output.split(',')
@@ -119,30 +120,32 @@ class DetectorLite():
 
     def getDocument(self, cell_tower, location):
         cell_tower = cell_tower.split(',')
-        arfcn = cell_tower[1][1:]         # Absolute radio frequency channel number
-        rxl = cell_tower[2]               # Receive level (signal stregnth)
-        if(len(cell_tower) > 9): # +CENG:0, '<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>'
-            bsic = cell_tower[6]          # Base station identity code
-            Cell_ID = cell_tower[7]       # Unique Identifier
-            MCC = cell_tower[4]           # Mobile Country Code
-            MNC = cell_tower[5]           # Mobile Network Code
-            LAC = cell_tower[10]          # Location Area code
-        else: # +CENG:1+,'<arfcn>, <rxl>, <bsic>, <cellid>, <mcc>, <mnc>, <lac>'    
-            bsic = cell_tower[3]          # Base station identity code
-            Cell_ID = cell_tower[4]       # Unique Identifier
-            MCC = cell_tower[5]           # Mobile Country Code
-            MNC = cell_tower[6]           # Mobile Network Code
-            LAC = cell_tower[7][:-2]      # Location Area code
+        if len(cell_tower) > 6:
+            arfcn = cell_tower[1][1:]         # Absolute radio frequency channel number
+            rxl = cell_tower[2]               # Receive level (signal stregnth)
+            if(len(cell_tower) > 9): # +CENG:0, '<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>'
+                bsic = cell_tower[6]          # Base station identity code
+                Cell_ID = cell_tower[7]       # Unique Identifier
+                MCC = cell_tower[4]           # Mobile Country Code
+                MNC = cell_tower[5]           # Mobile Network Code
+                LAC = cell_tower[10]          # Location Area code
+            else: # +CENG:1+,'<arfcn>, <rxl>, <bsic>, <cellid>, <mcc>, <mnc>, <lac>'    
+                bsic = cell_tower[3]          # Base station identity code
+                Cell_ID = cell_tower[4]       # Unique Identifier
+                MCC = cell_tower[5]           # Mobile Country Code
+                MNC = cell_tower[6]           # Mobile Network Code
+                LAC = cell_tower[7][:-2]      # Location Area code
         return {'time': time.strftime('%m-%d-%y %H:%M:%S'), 'MCC': MCC, 'MNC': MNC, 'LAC': LAC, 'Cell_ID': Cell_ID, 'rxl': int(rxl), 'arfcn': arfcn, 'bsic': bsic, 'lat': location.latitude, 'lon': location.longitude, 'satellites':  int(location.num_sats), 'GPS_quality': int(location.gps_qual), 'altitude': location.altitude, 'altitude_units': location.altitude_units}
 
     def update_local(self, document):
             FOLDER = 'data/backup/' + str(datetime.date.today())
             FILE = FOLDER  + '/table.csv'
+            fieldnames = ['MCC','MNC','LAC','Cell_ID','rxl','arfcn','bsic','lat','lon','satellites','GPS_quality','altitude','altitude_units']
             if not os.path.exists(FOLDER):
                 os.makedirs(FOLDER)
             with open(FILE, 'a') as f:
-                writer = csv.writer(f)
-                writer.writerow(document)
+                writer = csv.Dictwriter(f, fieldnames = fieldnames)
+                writer.writerow(dictionary.values())
 
     def update_remote(self):
         start = time.time()
