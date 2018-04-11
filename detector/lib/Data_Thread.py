@@ -39,7 +39,7 @@ class Data_Thread(threading.Thread):
                     location = pynmea2.parse(self.GPS_Thread.GPS_Output)
                     for i in range(len(cell_towers)):
                         document = self.getDocument(cell_towers, location)
-                        if(document['rxl'] != 255 and document['rxl'] > 7 and document['MCC'] = '0'): # filters out data points with lower receive strengths -- the data tends to get 'dirty' when the rxl is < 5~10
+                        if document['rxl'] != 255 and document['rxl'] > 7 and document['MCC'] == '0': # filters out data points with lower receive strengths -- the data tends to get 'dirty' when the rxl is < 5~10
                             self.log.info('Data] added document to queue')
                             self.update_local(document)
                             self.q.put(document)
