@@ -45,7 +45,7 @@ class Data_Thread(threading.Thread):
                             self.q.put(document)
                             sleep(self.RATE)
                         else:
-                            self.log.info('Data] dropped bad document: %s %s %s %s %s' % (document['MCC'], document['MNC'], document['LAC'], document['Cell_ID'], document['rxl'])
+                            self.log.info('Data] dropped bad document: %s %s %s %s %s' % (MCC, MNC, LAC, Cell_ID, rxl))
                 self.resume_GPS_and_SIM()
         self.stop_GPS_and_SIM()
 
