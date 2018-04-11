@@ -80,8 +80,8 @@ class Data_Thread(threading.Thread):
         self.SIM_Thread.go = True
 
     def update_local(self, document):
-        FOLDER = LOCAL_BACKUP_LOCATION + str(datetime.date.today())
-        FILE = FOLDER  + '/table.csv'
+        FOLDER = 'data/backup/' 
+        FILE = FOLDER  + str(datetime.date.today())+ '.csv'
         if not os.path.exists(FOLDER):
             os.makedirs(FOLDER)
         with open(FILE, 'a') as f:
