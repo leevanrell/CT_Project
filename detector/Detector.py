@@ -18,12 +18,14 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 import logging
 log = logging.getLogger()
 log.setLevel('DEBUG')
+
 LOG_FILE = LOG_LOCATION + str(datetime.date.today()) + '.log'
 file_handler = logging.FileHandler(LOG_FILE)
 file_handler.setFormatter(logging.Formatter('[%(asctime)s] [Detector.%(message)s'))
+log.addHandler(file_handler)
+
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(logging.Formatter('[%(asctime)s] [Detector.%(message)s'))
-log.addHandler(file_handler)
 log.addHandler(stream_handler)
 
 def main():
@@ -33,19 +35,19 @@ def main():
         log.info('main] setup failed. exiting.')
         quit()        
     if MODE:
-        pi() 
+        pi(setup) 
     else:
-        laptop()
+        laptop(setup)
     log.info('main] exiting')
 
 
 
-def laptop():
+def laptop(setup):
     from lib.Logging_Thread import Logging_Thread
     from lib.Data_Thread import Data_Thread
 
     q = Queue.Queue() 
-    Data = Data_Thread(log, q, setup.SIM_TTY, setup.GPS_TTY, RATE) 
+    Data = Data_Thread(log, q, setup.SIM_TTY, setup.GPS_TTY, TIMEOUT, RATE) 
     Logger = Logging_Thread(log, q, HTTP_SERVER) 
     log.info('main] starting threads')
     Data.start() 
@@ -65,9 +67,9 @@ def laptop():
         Data.join() 
         Logger.join()
 
-def pi():
+def pi(setup):
     from lib.DetectorLite import DetectorLite
-    detector = DetectorLite(log, HTTP_SERVER, setup.SIM_TTY, setup.GPS_TTY, RATE)
+    detector = DetectorLite(log, HTTP_SERVER, setup.SIM_TTY, setup.GPS_TTY, TIMEOUT, RATE)
     try:
         detector.start()
     except (KeyboardInterrupt, SystemExit):
@@ -88,13 +90,16 @@ if __name__ == '__main__':
     config = configparser.ConfigParser()
     config.read('config.txt')
     HTTP_SERVER = config['DEFAULT']['HTTP_Server']
-    RATE = int(config['DEFAULT']['Rate'])
-    MODE = isPi()
+    TIMEOUT = int(config['DEFAULT']['TIMEOUT'])
+    RATE = int(config['DEFAULT']['RATE'])
+    MODE = True
     parser = argparse.ArgumentParser(description='SIR Detector')
     parser.add_argument('-s', '--server', default=HTTP_SERVER, help='sets address and port of http server;') #, action='store', dest='mode')
-    parser.add_argument('-r', '--rate', default=RATE, help='delay between successfully finding a data point and attempting to find another') #, action='store', dest='mode')  
+    parser.add_argument('-t', '--timeout', default=TIMEOUT, help='amount of time detector takes to get data before giving up;')
+    parser.add_argument('-r', '--rate', default=RATE, help='amount of time detector waits before attempting to collect more data;')
     args = parser.parse_args()
     HTTP_SERVER = 'http://%s:3000/data' % args.server if(args.server[:4] != 'http') else args.server
+    TIMEOUT = args.timeout
     RATE = args.rate
-    log.info('setup] running as: %s, server address: %s' % (MODE, HTTP_SERVER))
+    log.info('setup] running as: %s, server address: %s' % ("Raspberry Pi" if MODE else "Laptop", HTTP_SERVER))
     main()

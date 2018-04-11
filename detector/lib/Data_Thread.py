@@ -13,41 +13,41 @@ import datetime
 import time 
 import logging
 from time import sleep 
-
+from lib.Setup import Setup
+sys.path.append('../')
 
 class Data_Thread(threading.Thread): 
 
-    def __init__(self, log, q, SIM_TTY, GPS_TTY, RATE):
+    def __init__(self, log, q, SIM_TTY, GPS_TTY, TIMEOUT, RATE):
         threading.Thread.__init__(self)
         self.running = True
         self.log = log
         self.q = q
-        self.GPS_Thread = self.GPS_Poller()
-        self.SIM_Thread = self.SIM_Poller()
-        self.SIM_TTY = SIM_TTY
-        self.GPS_TTY = GPS_TTY
-        self.Rate = RATE
+        self.GPS_Thread = self.GPS_Poller(log, SIM_TTY)
+        self.SIM_Thread = self.SIM_Poller(log, GPS_TTY)
+        self.TIMEOUT = TIMEOUT
+        self.RATE = RATE
     
     def run(self):
-        start_GPS_and_SIM()
+        self.start_GPS_and_SIM()
         # TODO: make execution control and error checking not terrible
         while self.running and self.GPS_Thread.running and self.SIM_Thread.running: # breaks execution if gps or sim crashes   
             if not self.GPS_Thread.go and not self.SIM_Thread.go: # only runs when the GPS and SIM Thread are finished 
                 self.log.debug('Data] GPS runtime: %.2f, SIM runtime: %.2f' % (self.GPS_Thread.run_time, self.SIM_Thread.run_time))
-                if self.GPS_Thread.run_time < 10.0 and abs(self.GPS_Thread.run_time - self.SIM_Thread.run_time) < .4: 
+                if self.GPS_Thread.run_time < self.TIMEOUT and abs(self.GPS_Thread.run_time - self.SIM_Thread.run_time) < .4: 
                     cell_towers = self.SIM_Thread.SIM_Output 
                     location = pynmea2.parse(self.GPS_Thread.GPS_Output)
                     for i in range(len(cell_towers)):
-                        document = getDocument(cell_towers, location)
-                        if(rxl != 255 and rxl > 7 and MCC != '0'): # filters out data points with lower receive strengths -- the data tends to get 'dirty' when the rxl is < 5~10
+                        document = self.getDocument(cell_towers, location)
+                        if(document['rxl'] != 255 and document['rxl'] > 7 and document['MCC'] = '0'): # filters out data points with lower receive strengths -- the data tends to get 'dirty' when the rxl is < 5~10
                             self.log.info('Data] added document to queue')
-                            update_local(document)
-                            q.put(document)
-                            sleep(RATE)
+                            self.update_local(document)
+                            self.q.put(document)
+                            sleep(self.RATE)
                         else:
-                            self.log.info('Data] dropped bad document: %s %s %s %s %s' % (MCC, MNC, LAC, Cell_ID, rxl))
-                resume_GPS_and_SIM()
-        stop_GPS_and_SIM()
+                            self.log.info('Data] dropped bad document: %s %s %s %s %s' % (document['MCC'], document['MNC'], document['LAC'], document['Cell_ID'], document['rxl'])
+                self.resume_GPS_and_SIM()
+        self.stop_GPS_and_SIM()
 
     def getDocument(cell_towers, location):
         cell_tower = cell_towers[i].split(',')
@@ -67,15 +67,15 @@ class Data_Thread(threading.Thread):
             LAC = cell_tower[7][:-2]      # Location Area code
         return {'time': time.strftime('%m-%d-%y %H:%M:%S'), 'MCC': MCC, 'MNC': MNC, 'LAC': LAC, 'Cell_ID': Cell_ID, 'rxl': int(rxl), 'arfcn': arfcn, 'bsic': bsic, 'lat': location.latitude, 'lon': location.longitude, 'satellites':  int(location.num_sats), 'GPS_quality': int(location.gps_qual), 'altitude': location.altitude, 'altitude_units': location.altitude_units}
                         
-    def start_GPS_and_SIM():
+    def start_GPS_and_SIM(self):
         self.GPS_Thread.start()
         self.SIM_Thread.start()
 
-    def stop _GPS_and_SIM():
+    def stop_GPS_and_SIM(self):
         self.GPS_Thread.running = False
         self.SIM_Thread.running = False
 
-    def resume_GPS_and_SIM():
+    def resume_GPS_and_SIM(self):
         self.GPS_Thread.go = True
         self.SIM_Thread.go = True
 
@@ -88,11 +88,12 @@ class Data_Thread(threading.Thread):
             writer = csv.writer(f)
             writer.writerow(document)
 
-    class GPS_Poller(threading.Thread): 
-            def __init__(self):
+    class GPS_Poller(threading.Thread):
+
+        def __init__(self, log, GPS_TTY):
             threading.Thread.__init__(self)
-            self.GPS_Serial = serial.Serial(port=self.GPS_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
-            self.GPS_Serial.close() 
+            self.log = log
+            self.GPS_TTY = GPS_TTY
             self.running = True 
             self.go = True 
             self.run_time = 0.0 
@@ -102,8 +103,8 @@ class Data_Thread(threading.Thread):
             while self.running: 
                 if self.go:
                     try:
+                        self.GPS_Serial = serial.Serial(port=self.GPS_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
                         start = time.time()
-                        self.GPS_Serial.open()
                         sleep(.1)
                         self.GPS_Output = self.GPS_Serial.readline()
                         while not self.isValidLocation(self.GPS_Output) and time.time() - start < 10.0: # loops until has a valid GPS fix or until run time is more than 10 sec
@@ -113,9 +114,22 @@ class Data_Thread(threading.Thread):
                         self.run_time = time.time() - start 
                         self.go = False 
                     except serial.SerialException as e:
-                        selflog.error('GPS] something got unplugged!') 
+                        self.log.error('GPS] something got unplugged!') 
                         # TODO: make execution control and error checking not terrible; implement semaphores better
-                        self.running = False
+                        sleep(1)
+                        setup = Setup(self.log)
+                        setup.setup_TTY();
+                        count = 0
+                        while not setup.configured and count < 10:
+                            setup.setup_TTY();
+                            count += 0
+                        if not setup.configured:
+                            self.log.error('GPS] setup failed')
+                            self.running = False
+                        else:
+                            self.GPS_TTY = setup.GPS_TTY
+                            #TODO: Possibly need to set SIM TTY aswell somehow getInstance() 
+                
                 else:
                     sleep(.1)
                      
@@ -124,10 +138,11 @@ class Data_Thread(threading.Thread):
             return len(output) >= 6 and check[0] == '$GPGGA' and int(check[6]) != 0 # we only want GPGGA sentences with an actual fix (Fix != 0)
 
     class SIM_Poller(threading.Thread): 
-        def __init__(self):
+
+        def __init__(self, log, SIM_TTY):
             threading.Thread.__init__(self)
-            self.SIM_Serial = serial.Serial(port=self.SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
-            self.SIM_Serial.close()
+            self.log = log
+            self.SIM_TTY = SIM_TTY
             self.running = True
             self.go = True
             self.run_time = 0.0
@@ -137,8 +152,8 @@ class Data_Thread(threading.Thread):
             while self.running:
                 if self.go:
                     try:
+                        self.SIM_Serial = serial.Serial(port=self.SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
                         start = time.time()
-                        self.SIM_Serial.open() 
                         self.SIM_Serial.write('AT+CENG?' + '\r\n')  
                         sleep(.1) 
                         self.SIM_Output = ''
@@ -149,10 +164,20 @@ class Data_Thread(threading.Thread):
                         self.run_time = time.time() - start 
                         self.go = False
                     except serial.SerialException as e:
-                        self.log.error('SIM] something got unplugged!')
+                        self.log.error('SIM] something got unplugged!') 
                         # TODO: make execution control and error checking not terrible; implement semaphores better
-                        self.running = False 
-                        Data.join()
-                        Logger.join()
+                        sleep(1)
+                        setup = Setup(self.log)
+                        setup.setup_TTY();
+                        count = 0
+                        while not setup.configured and count < 10:
+                            setup.setup_TTY();
+                            count += 0
+                        if not setup.configured:
+                            self.log.error('SIM] setup failed')
+                            self.running = False
+                        else:
+                            self.SIM_TTY = setup.SIM_TTY
+                            #TODO: Possibly need to set GPS TTY aswell somehow getInstance() 
                 else:
                     sleep(.1)

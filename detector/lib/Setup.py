@@ -15,39 +15,34 @@ class Setup():
         self.log.info('setup] setting TTY connections')
         configured_SIM = False
         configured_GPS = False
-        for i in range(0, 6): 
-            found_SIM = self.find_SIM_TTY()
-            if found_SIM:
-                configured_SIM = self.config_SIM();
-                break
-        for i in range(0, 6): 
-            found_GPS = self.find_GPS_TTY()
-            if found_GPS:
-                configured_GPS = self.config_SIM()
-                break 
+        found_SIM = self.find_SIM_TTY()
+        if found_SIM:
+            configured_SIM = self.config_SIM();
+        found_GPS = self.find_GPS_TTY()
+        if found_GPS:
+            configured_GPS = self.config_GPS()
         if not configured_GPS or not configured_SIM: 
             self.log.error('setup] failed to configure TTY: GPS - %s, SIM - %s' % (configured_GPS, configured_SIM))
         else:
             self.configured = True
-        
 
     def find_SIM_TTY(self):
-        for count in range(0, 10):
-            self.SIM_TTY = '/dev/ttyUSB%s' % count 
-            try:
-                Serial = serial.Serial(port=self.SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
-                Serial.write('AT' + '\r\n') 
-                sleep(.5)
-                for i in range(0, 5):
-                    check = Serial.readline()
-                    if check == 'OK\r\n':
-                        self.log.info('setup] set SIM_TTY to ' + self.SIM_TTY)
-                        return True
-                Serial.close()
-            except serial.SerialException as e:
-                pass 
+        for retry in range(0, 6):
+            for count in range(0, 10):
+                self.SIM_TTY = '/dev/ttyUSB%s' % count 
+                try:
+                    Serial = serial.Serial(port=self.SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
+                    Serial.write('AT' + '\r\n') 
+                    sleep(.5)
+                    for i in range(0, 5):
+                        check = Serial.readline()
+                        if check == 'OK\r\n':
+                            self.log.info('setup] set SIM_TTY to ' + self.SIM_TTY)
+                            return True
+                    Serial.close()
+                except serial.SerialException as e:
+                    pass 
         return False
-
 
     def config_SIM(self): 
         self.log.info('setup] configuring SIM')
@@ -62,13 +57,14 @@ class Setup():
         return True
 
     def find_GPS_TTY(self): 
-        for count in range(0, 10):
-            self.GPS_TTY = '/dev/ttyUSB%s' % count
-            try:        
-                if self.test_GPS(9600) or self.test_GPS(115200): 
-                    return True
-            except serial.SerialException as e:
-                pass
+        for retry in range(0, 6): 
+            for count in range(0, 10):
+                self.GPS_TTY = '/dev/ttyUSB%s' % count
+                try:        
+                    if self.test_GPS(9600) or self.test_GPS(115200): 
+                        return True
+                except serial.SerialException as e:
+                    pass
         return False
 
     def test_GPS(self, baudrate):

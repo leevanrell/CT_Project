@@ -10,8 +10,6 @@ import logging
 from time import sleep 
 
 class Logging_Thread(threading.Thread): 
-
-    Queue q = Queue.Queue()
     
     def __init__(self, log, q, HTTP_SERVER):
         threading.Thread.__init__(self)
@@ -28,22 +26,22 @@ class Logging_Thread(threading.Thread):
         self.send_Data() 
     
     def send_Data(self):
-        while not q.empty():
+        while not self.q.empty():
             if self.isConnected():
                 try:
-                    document = q.get()
+                    document = self.q.get()
                     r = requests.post(self.HTTP_SERVER, data=json.dumps(document), headers={'content-type': 'application/json'})
                     #r = requests.post(HTTP_SERVER + '/data', data=json.dumps(document)) # converts to json and sends post request
                     if r.status_code != 200:
-                        q.add(document)
-                        log.error('Logger] status code: %s' % r.status_code)
+                        self.q.add(document)
+                        self.log.error('Logger] status code: %s' % r.status_code)
                     else:
-                        log.info('Logger] uploaded document')
+                        self.log.info('Logger] uploaded document')
                 except OSError:
-                    log.error('Logger] lost connection')
+                    self.log.error('Logger] lost connection')
             else:
-               log.error('Logger] no internet connection')
-               sleep(1)
+               self.log.error('Logger] no internet connection')
+               sleep(.5)
 
     def isConnected(self): 
         try:

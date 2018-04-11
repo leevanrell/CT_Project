@@ -40,7 +40,7 @@ module.exports = function(app, db, logger) {
 					});
 				} else { //tower is already in db and doesn't need to be added
 					response.status(200).send({message : 'success'});
-					logger.info('successfully added document to data table: tower already in towers table');
+					logger.info('document is already in towers table');
 				};
 			});
 		});
