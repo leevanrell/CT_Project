@@ -15,6 +15,13 @@ from time import sleep
 
 os.chdir(os.path.dirname(os.path.abspath(__file__))) 
 
+if not os.path.exists('./data'):
+    os.makedirs('./data')
+if not os.path.exists('./data/log'):
+    os.makedirs('./data/log')
+if not os.path.exists('./data/backup'):
+    os.makedirs('./data/backup')
+
 import logging
 log = logging.getLogger()
 log.setLevel('DEBUG')
