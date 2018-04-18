@@ -6,7 +6,7 @@ import os
 import time
 from time import sleep
 
-SIM_TTY = '/dev/ttyUSB1'
+SIM_TTY = '/dev/ttyUSB0'
 
 class SIM_Poller(threading.Thread):
     def __init__(self):
@@ -48,7 +48,7 @@ def setupSIM():
         quit()
 
 
-def main():
+def main_old():
     setupSIM() 
     SIM = SIM_Poller()
     try:
@@ -94,7 +94,18 @@ def main():
         SIM.running = False
         SIM.join()
         quit()
-    print 'Done'
+    print 'Done Wii'
+
+def main():
+    SIM_Serial = serial.Serial(port=SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
+    SIM_Serial.write('AT+CENG?' + '\r\n')  # Sends Command to Display current engineering mode settings, serving cell and neighboring cells
+    sleep(.5) # Need to wait for device to receive commands 
+    SIM_Output = ''
+    while SIM_Serial.inWaiting() > 0:
+        SIM_Output += SIM_Serial.read(6) 
+        sleep(.1)
+    SIM_Serial.close()
+    print SIM_Output
 
 if __name__ == "__main__":
     main()

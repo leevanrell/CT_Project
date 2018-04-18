@@ -10,6 +10,7 @@ import sys
 import datetime
 import time 
 import Queue
+import urllib2
 from lib.Setup import Setup
 from time import sleep 
 
@@ -90,6 +91,13 @@ def isPi():
     except ImportError:
         return False
 
+def isConnected(HTTP_SERVER): 
+    try:
+        urllib2.urlopen(HTTP_SERVER, timeout=1)
+        return True
+    except urllib2.URLError as err: 
+        return False
+
 if __name__ == '__main__':
     if not os.geteuid() == 0:
         log.error('setup] script must be run as root!')
@@ -108,5 +116,7 @@ if __name__ == '__main__':
     HTTP_SERVER = 'http://%s:3000/data' % args.server if(args.server[:4] != 'http') else args.server
     TIMEOUT = args.timeout
     RATE = args.rate
+    if not isConnected(HTTP_SERVER):
+        log.warning('setup] cannot connect to %s'% HTTP_SERVER)
     log.info('setup] running as: %s, server address: %s' % ("Raspberry Pi" if MODE else "Laptop", HTTP_SERVER))
     main()

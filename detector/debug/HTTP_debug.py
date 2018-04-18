@@ -19,6 +19,7 @@ document = {'time': '194168.000',
  'altitude': 230.2,
  'altitude_units': 'M'
 }
+print document
 headers = {'content-type': 'application/json'}
 r = requests.post(HTTP_SERVER, data=json.dumps(document), headers=headers)
 print 'Status Code: %s' % r.status_code

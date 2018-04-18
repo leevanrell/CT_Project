@@ -4,7 +4,7 @@
 # LED_gpio 		: GPIO for led, only available on pi
 # button_gpio	: button GPIO for button, only available on pi; stops programs
 [DEFAULT]
-HTTP_Server = 127.0.0.1:3000
+HTTP_Server = http://127.0.0.1:3000
 TIMEOUT = 5
 RATE = 5
 LED_gpio = 3 # GPIO pin for LED 

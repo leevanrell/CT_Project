@@ -37,7 +37,7 @@ class DetectorLite():
                     location = pynmea2.parse(location)
                     for i in range(len(cell_towers)):
                         document = self.getDocument(cell_towers[i], location)
-                        if(document['GPS_quality'] != 0 and document['rxl'] > 7 and document['rxl'] != 255 and document['MCC'] != '0'): 
+                        if document['GPS_quality'] != 0 and document['rxl'] > 7 and document['rxl'] != 255: 
                             self.log.info('Data] added document to queue')
                             self.update_local(document)
                             q.put(document)
@@ -53,7 +53,7 @@ class DetectorLite():
     def getCell(self):
         try:
             SIM_Serial = serial.Serial(port=self.SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
-            SIM_Serial.write('AT+CENG?' + '\r\n')  
+            SIM_Serial.write('AT+CENG?\r\n')  
             sleep(.1)  
             SIM_Output = ''
             while SIM_Serial.inWaiting() > 0:
@@ -63,7 +63,6 @@ class DetectorLite():
             return SIM_Output
         except serial.SerialException as e:
             self.log.error('SIM] something got unplugged!') 
-            # TODO: make execution control and error checking not terrible; implement semaphores better
             sleep(1)
             setup = Setup(self.log)
             setup.setup_TTY();
@@ -97,7 +96,6 @@ class DetectorLite():
                 return 'error: bad gps data'
         except serial.SerialException as e:
             self.log.error('GPS] something got unplugged!') 
-            # TODO: make execution control and error checking not terrible; implement semaphores better
             sleep(1)
             setup = Setup(self.log)
             setup.setup_TTY();
@@ -138,14 +136,13 @@ class DetectorLite():
         return {'time': time.strftime('%m-%d-%y %H:%M:%S'), 'MCC': MCC, 'MNC': MNC, 'LAC': LAC, 'Cell_ID': Cell_ID, 'rxl': int(rxl), 'arfcn': arfcn, 'bsic': bsic, 'lat': location.latitude, 'lon': location.longitude, 'satellites':  int(location.num_sats), 'GPS_quality': int(location.gps_qual), 'altitude': location.altitude, 'altitude_units': location.altitude_units}
 
     def update_local(self, document):
-            FOLDER = 'data/backup/' 
-            FILE = FOLDER  + str(datetime.date.today())+ '.csv'
-            fieldnames = ['MCC','MNC','LAC','Cell_ID','rxl','arfcn','bsic','lat','lon','satellites','GPS_quality','altitude','altitude_units']
-            if not os.path.exists(FOLDER):
-                os.makedirs(FOLDER)
-            with open(FILE, 'a') as f:
-                writer = csv.Dictwriter(f, fieldnames = fieldnames)
-                writer.writerow(dictionary.values())
+        FOLDER = 'data/backup/' 
+        FILE = FOLDER  + str(datetime.date.today())+ '.csv'
+        if not os.path.exists(FOLDER):
+            os.makedirs(FOLDER)
+        with open(FILE, 'a') as f:
+            writer = csv.DictWriter(f, document.keys())
+            writer.writerow(document)
 
     def update_remote(self):
         start = time.time()
@@ -167,7 +164,7 @@ class DetectorLite():
 
     def isConnected(self):
         try:
-            socket.create_connection((HTTP_SERVER, 3000))
+            socket.create_connection((self.HTTP_SERVER, 3000))
             return True
         except OSError:
             pass

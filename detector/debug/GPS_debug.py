@@ -42,7 +42,7 @@ class GPS_Poller(threading.Thread):
                     #self.go = False;
                     self.run_time = time.time() - start
                     print self.GPS_Output[:-2]
-                    print self.run_time
+                    print self.isValidLocation(self.GPS_Output)
                 except serial.SerialException as e:
                     running = False;
                     log.error('GPS disconnected')

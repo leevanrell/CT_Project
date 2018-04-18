@@ -7,6 +7,8 @@ import os
 import sys 
 import datetime 
 import logging
+import urllib2
+import requests
 from time import sleep 
 
 class Logging_Thread(threading.Thread): 
@@ -27,13 +29,13 @@ class Logging_Thread(threading.Thread):
     
     def send_Data(self):
         while not self.q.empty():
-            if self.isConnected():
+            if self.isConnected(self.HTTP_SERVER):
                 try:
                     document = self.q.get()
-                    r = requests.post(self.HTTP_SERVER, data=json.dumps(document), headers={'content-type': 'application/json'})
-                    #r = requests.post(HTTP_SERVER + '/data', data=json.dumps(document)) # converts to json and sends post request
+                    #r = requests.post(self.HTTP_SERVER, data=json.dumps(document), headers={'content-type': 'application/json'})
+                    r = requests.post(self.HTTP_SERVER + '/data', data=json.dumps(document), headers={'content-type': 'application/json'}) # converts to json and sends post request
                     if r.status_code != 200:
-                        self.q.add(document)
+                        self.q.put(document)
                         self.log.error('Logger] status code: %s' % r.status_code)
                     else:
                         self.log.info('Logger] uploaded document')
@@ -43,10 +45,9 @@ class Logging_Thread(threading.Thread):
                self.log.error('Logger] no internet connection')
                sleep(.5)
 
-    def isConnected(self): 
+    def isConnected(self, HTTP_SERVER): 
         try:
-            socket.create_connection((HTTP_SERVER, 3000)) 
+            urllib2.urlopen(HTTP_SERVER, timeout=1)
             return True
-        except OSError:
-            pass
-        return False
+        except urllib2.URLError as err: 
+            return False
