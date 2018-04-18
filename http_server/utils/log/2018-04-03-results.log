@@ -1,0 +1,13 @@
+04-03-2018 12:33:23 - info: server started on: 127.0.0.1:3000
+04-03-2018 12:47:07 - debug: 127.0.0.1: GET /
+04-03-2018 12:47:28 - debug: 127.0.0.1: GET /towers
+04-03-2018 12:47:29 - info: returned towers to: 127.0.0.1
+04-03-2018 12:48:35 - debug: 127.0.0.1: GET /tower
+04-03-2018 12:48:35 - info: returned tower heatmap to: 127.0.0.1
+04-03-2018 12:49:02 - info: server started on: 127.0.0.1:3000
+04-03-2018 12:49:12 - info: server started on: 127.0.0.1:3000
+04-03-2018 12:49:17 - debug: 127.0.0.1: GET /towers
+04-03-2018 12:49:17 - info: returned towers to: 127.0.0.1
+04-03-2018 13:12:01 - info: server started on: 127.0.0.1:3000
+04-03-2018 13:12:06 - debug: 127.0.0.1: GET /tower
+04-03-2018 13:12:06 - info: returned tower heatmap to: 127.0.0.1
