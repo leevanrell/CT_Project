@@ -23,14 +23,14 @@ module.exports = function(app, db, logger) {
 					response.status(400).send({message : 'error'});
 					return logger.warn(err);
 				} else if(res.rows[0].count.low == 0) { //if low is zero tower is not in table 
-					url = 'https://api.mylnikov.org/geolocation/cell?v=1.1&data=open&mcc=' + data['MCC'] + '&mnc=' +  data['MNC'] + '&lac=' + data['LAC'] + '&cellid=' + data['Cell_ID'];
+					url = 'https://api.mylnikov.org/geolocation/cell?v=1.1&data=open&mcc=' + data['MCC'] + '&mnc=' +  data['MNC'] + '&lac=' + parseInt(data['LAC'], 16) + '&cellid=' + parseInt(data['Cell_ID'], 16)
 					require('request').get(url, function(err ,res){ //checks if tower is in mylnikov database
 						if(err){
 							response.status(400).send({message : 'error'});
 							return logger.warn(err);
 						} else {
 							var mylnikov = JSON.parse(res.body);
-							var params = (mylnikov['result'] == 404) ? [data['MCC'], data['MNC'], data['LAC'], data['Cell_ID'], false, 0, 0] : [data['MCC'], data['MNC'], data['LAC'], data['Cell_ID'], true, mylnikov['data']['lat'], mylnikov['data']['lon']];
+							var params = (mylnikov['result'] == 400) ? [data['MCC'], data['MNC'], data['LAC'], data['Cell_ID'], false, 0, 0] : [data['MCC'], data['MNC'], data['LAC'], data['Cell_ID'], true, mylnikov['data']['lat'], mylnikov['data']['lon']];
 							var query = 'INSERT INTO towers(MCC, MNC, LAC, Cell_ID, mylnikov, lat, lon) VALUES (?, ?, ?, ?, ?, ?, ?)';
 							db.execute(query, params, { prepare : true }, function(err){ //adds tower to towers table
 								(err) ? response.status(400).send({message : 'error'}) : response.status(200).send({message : 'success'});
@@ -74,14 +74,15 @@ module.exports = function(app, db, logger) {
 			var json = [];
 			for(var i = 0; i < table.length; i++) {
 				if(table[i].mylnikov) {
-					var marker = 'var marker' + i + ' = new google.maps.Marker({\n';
-					marker = marker + '\tposition: ' + '{' + table[i].lat + ',' + table[i].lon + '};\n';
-				    marker = marker + '\tmap: map,\n';
-				    marker = marker + '\ttitle: ' + table[i].mcc + '-' + table[i].mnc + '-' + table[i].lac + '-' + table[i].cell_id + '\n';
+					var marker = 'var marker' + i + ' = new google.maps.Marker({';
+					marker = marker + 'position: ' + '{' + table[i].lat + ',' + table[i].lon + '};';
+				    marker = marker + 'map: map,';
+				    marker = marker + 'title: ' + table[i].mcc + '-' + table[i].mnc + '-' + table[i].lac + '-' + table[i].cell_id ;
 				    marker = marker + '});';
 				    json.push(marker); //adds data to json array
 				};
 			};
+			logger.debug(json)
 			callback(JSON.stringify(json).replace(/"/g,"")); //removes " from json string and returns to /tower
 		});		
 	};
@@ -114,6 +115,7 @@ module.exports = function(app, db, logger) {
 				response.status(400).send({message : 'error'});
 				return logger.warn('getTowers failed');
 			}
+			logger.debug(request.query)
 			getTower(request.query, function(Points){ //gets tower heatmap data
 				if(Points == 'err') {
 					response.status(400).send({message : 'error'});
@@ -124,7 +126,6 @@ module.exports = function(app, db, logger) {
 				//logger.debug(Markers.slice(1, -1))
 				//logger.debug(Points);
 				response.render('home', {
-					center_in : GPS,
 					points_in : Points, //heatmap data
 					markers_in : Markers.slice(1, -1) //tower markers
 				});
