@@ -1,4 +1,4 @@
 *.log
 *.csv
 *.pyc
-
+*.out

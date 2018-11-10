@@ -1,5 +1,4 @@
 #!/usr/bin/python
-QUEUE_SIZE = 10
 
 import serial 
 import argparse
@@ -16,6 +15,9 @@ import time
 from time import sleep
 from lib.Setup import Setup
 sys.path.append('../')
+
+QUEUE_SIZE = 10
+
 
 class DetectorLite():
 

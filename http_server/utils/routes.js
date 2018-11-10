@@ -16,7 +16,7 @@ module.exports = function(app, db, logger) {
 			if (err) {
 				response.status(400).send({message : 'error'});
 				return logger.warn(err);
-			};
+			}
 			var towers_query = 'SELECT count(*) FROM towers WHERE MCC = \'' + data['MCC'] + '\' AND MNC = \'' + data['MNC'] + '\' AND LAC = \'' + data['LAC'] + '\' AND Cell_ID = \'' + data['Cell_ID'] + '\';';
 			db.execute(towers_query, function(err, res){ //checks if tower is in towers table
 				if(err) {
@@ -36,12 +36,12 @@ module.exports = function(app, db, logger) {
 								(err) ? response.status(400).send({message : 'error'}) : response.status(200).send({message : 'success'});
 								(err) ? logger.warn(err) : logger.info('successfully added document to tables');
 							});
-						};
+						}
 					});
 				} else { //tower is already in db and doesn't need to be added
 					response.status(200).send({message : 'success'});
 					logger.info('document is already in towers table');
-				};
+				}
 			});
 		});
 	});
@@ -58,7 +58,7 @@ module.exports = function(app, db, logger) {
 			for(var row of res.rows) {
 				temp = row['mcc'] + '-' + row['mnc'] + '-' + row['lac'] + '-' + row['cell_id'] + ((row['mylnikov']) ? ': registered in mylnikov' : ': not registered in mylnikov');
 				var str = str + temp + '\n'; 
-			};
+			}
 			response.end(str); //sends list of towers to client
 			logger.info('returned towers to: ' + request.ip);
 		});  
@@ -80,8 +80,8 @@ module.exports = function(app, db, logger) {
 				    marker = marker + 'title: ' + table[i].mcc + '-' + table[i].mnc + '-' + table[i].lac + '-' + table[i].cell_id ;
 				    marker = marker + '});';
 				    json.push(marker); //adds data to json array
-				};
-			};
+				}
+			}
 			logger.debug(json)
 			callback(JSON.stringify(json).replace(/"/g,"")); //removes " from json string and returns to /tower
 		});		
@@ -100,15 +100,15 @@ module.exports = function(app, db, logger) {
 				var data = { 
 					location: 'new google.mapsLatLng(' + table[i].lat + ', ' + table[i].lon + ')',
 					weight: table[i].rxl
-				};
+				}
 				json.push(data); //adds data to json array
-			};
+			}
 			callback(JSON.stringify(json).replace(/"/g,"")); //removes " from json string
 		});
 	};
 	
 	//sends html page using google api with data from database
-	app.get('/tower', function(request, response, next) {
+	app.get('/tower', function(request, response) {
 		logger.debug(request.ip + ': GET /tower');
 		getTowers(function(Markers) { //gets markers for each tower
 			if(Markers == 'err') {
@@ -128,10 +128,10 @@ module.exports = function(app, db, logger) {
 				response.render('home', {
 					points_in : Points, //heatmap data
 					markers_in : Markers.slice(1, -1) //tower markers
-				});
+				})
 				logger.info('returned tower heatmap to: ' + request.ip);
 			});
 		});
 	});
 	
-};
+}
