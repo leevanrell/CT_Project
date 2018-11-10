@@ -32,15 +32,14 @@ class Data_Thread(threading.Thread):
     
     def run(self):
         self.start_GPS_and_SIM()
-        # TODO: make execution control and error checking not terrible
         while self.running and self.GPS_Thread.running and self.SIM_Thread.running: # breaks execution if gps or sim crashes   
             if not self.GPS_Thread.go and not self.SIM_Thread.go: # only runs when the GPS and SIM Thread are finished 
                 self.log.debug('Data] GPS runtime: %.2f, SIM runtime: %.2f' % (self.GPS_Thread.run_time, self.SIM_Thread.run_time))
                 if self.GPS_Thread.run_time < self.TIMEOUT and abs(self.GPS_Thread.run_time - self.SIM_Thread.run_time) < .4 and self.GPS_Thread.isValidLocation(self.GPS_Thread.GPS_Output): 
                     cell_towers = self.SIM_Thread.SIM_Output 
                     location = pynmea2.parse(self.GPS_Thread.GPS_Output)
-                    for i in range(len(cell_towers)):
-                        document = self.getDocument(cell_towers[i], location)
+                    for cell_tower in cell_towers:
+                        document = self.getDocument(cell_tower, location)
                         if document['GPS_quality'] != 0 and document['rxl'] != 255 and document['rxl'] > 7 and document['Cell_ID'] != 'ffff' and  document['MCC'] != 0: # filters out data points with lower receive strengths -- the data tends to get 'dirty' when the rxl is < 5~10
                             self.log.info('Data] added document to queue')
                             self.update_local(document)
@@ -129,8 +128,7 @@ class Data_Thread(threading.Thread):
                             self.log.error('GPS] setup failed')
                             self.running = False
                         else:
-                            self.GPS_TTY = setup.GPS_TTY
-                            #TODO: Possibly need to set SIM TTY aswell somehow getInstance()              
+                            self.GPS_TTY = setup.GPS_TTY            
                 else:
                     sleep(.1)
 
@@ -179,6 +177,5 @@ class Data_Thread(threading.Thread):
                             self.running = False
                         else:
                             self.SIM_TTY = setup.SIM_TTY
-                            #TODO: Possibly need to set SIM TTY aswell somehow getInstance() 
                 else:
                     sleep(.1)
