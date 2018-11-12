@@ -75,6 +75,7 @@ def laptop(setup):
         Data.join() 
         Logger.join()
 
+
 def pi(setup):
     from lib.DetectorLite import DetectorLite
     detector = DetectorLite(log, HTTP_SERVER, setup.SIM_TTY, setup.GPS_TTY, TIMEOUT, RATE)
@@ -84,6 +85,7 @@ def pi(setup):
         log.info('main] detected KeyboardInterrupt: stopping job')
         detector.run = False
 
+
 def isPi():
     try:
         import RPi.GPIO as GPIO
@@ -91,13 +93,18 @@ def isPi():
     except ImportError:
         return False
 
+
 def isConnected(HTTP_SERVER): 
     try:
-        urllib2.urlopen(HTTP_SERVER, timeout=1)
+        if HTTP_SERVER.lower().startswith('http'):
+            urllib2.urlopen(HTTP_SERVER, timeout=1)
+        else
+          raise ValueError from None
         return True
-    except urllib2.URLError as err: 
+    except urllib2.URLError as err:
         return False
 
+rm
 if __name__ == '__main__':
     if not os.geteuid() == 0:
         log.error('setup] script must be run as root!')

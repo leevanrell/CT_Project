@@ -1,5 +1,4 @@
 #!/usr/bin/python
-QUEUE_SIZE = 10
 
 import serial 
 import argparse
@@ -16,6 +15,9 @@ import time
 from time import sleep
 from lib.Setup import Setup
 sys.path.append('../')
+
+QUEUE_SIZE = 10
+
 
 class DetectorLite():
 
@@ -35,8 +37,8 @@ class DetectorLite():
                 cell_towers = self.getCell()
                 if location[:5] != "error" and cell_towers[:5] != "error":
                     location = pynmea2.parse(location)
-                    for i in range(len(cell_towers)):
-                        document = self.getDocument(cell_towers[i], location)
+                    for cell_tower in cell_towers:
+                        document = self.getDocument(cell_tower, location)
                         if document['GPS_quality'] != 0 and document['rxl'] > 7 and document['rxl'] != 255: 
                             self.log.info('Data] added document to queue')
                             self.update_local(document)
@@ -49,7 +51,7 @@ class DetectorLite():
             except (KeyboardInterrupt, SystemExit):
                 self.run = False
         update_remote()
-            
+         
     def getCell(self):
         try:
             SIM_Serial = serial.Serial(port=self.SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
@@ -65,10 +67,10 @@ class DetectorLite():
             self.log.error('SIM] something got unplugged!') 
             sleep(1)
             setup = Setup(self.log)
-            setup.setup_TTY();
+            setup.setup_TTY()
             count = 0
             while not setup.configured and count < 10:
-                setup.setup_TTY();
+                setup.setup_TTY()
                 count += 0
                 self.log.error('SIM] Retrying setup: %s', count)
             if not setup.configured:
@@ -98,10 +100,10 @@ class DetectorLite():
             self.log.error('GPS] something got unplugged!') 
             sleep(1)
             setup = Setup(self.log)
-            setup.setup_TTY();
+            setup.setup_TTY()
             count = 0
             while not setup.configured and count < 10:
-                setup.setup_TTY();
+                setup.setup_TTY()
                 count += 0
                 self.log.error('GPS] Retrying setup: %s', count)
             if not setup.configured:

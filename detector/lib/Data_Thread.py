@@ -14,8 +14,12 @@ import logging
 from time import sleep
 from lib.Setup import Setup
 
+<<<<<<< HEAD
 LOCAL_BACKUP_LOCATION = 'data/backup/'
+=======
+>>>>>>> d6831932d930265542b448d2f4788d3f13b932f0
 sys.path.append('../')
+
 
 class Data_Thread(threading.Thread): 
 
@@ -28,18 +32,17 @@ class Data_Thread(threading.Thread):
         self.SIM_Thread = self.SIM_Poller(log, SIM_TTY)
         self.TIMEOUT = TIMEOUT
         self.RATE = RATE
-    
+
     def run(self):
         self.start_GPS_and_SIM()
-        # TODO: make execution control and error checking not terrible
         while self.running and self.GPS_Thread.running and self.SIM_Thread.running: # breaks execution if gps or sim crashes   
             if not self.GPS_Thread.go and not self.SIM_Thread.go: # only runs when the GPS and SIM Thread are finished 
                 self.log.debug('Data] GPS runtime: %.2f, SIM runtime: %.2f' % (self.GPS_Thread.run_time, self.SIM_Thread.run_time))
                 if self.GPS_Thread.run_time < self.TIMEOUT and abs(self.GPS_Thread.run_time - self.SIM_Thread.run_time) < .4 and self.GPS_Thread.isValidLocation(self.GPS_Thread.GPS_Output): 
                     cell_towers = self.SIM_Thread.SIM_Output 
                     location = pynmea2.parse(self.GPS_Thread.GPS_Output)
-                    for i in range(len(cell_towers)):
-                        document = self.getDocument(cell_towers[i], location)
+                    for cell_tower in cell_towers:
+                        document = self.getDocument(cell_tower, location)
                         if document['GPS_quality'] != 0 and document['rxl'] != 255 and document['rxl'] > 7 and document['Cell_ID'] != 'ffff' and  document['MCC'] != 0: # filters out data points with lower receive strengths -- the data tends to get 'dirty' when the rxl is < 5~10
                             self.log.info('Data] added document to queue')
                             self.update_local(document)
@@ -82,7 +85,7 @@ class Data_Thread(threading.Thread):
 
     def update_local(self, document):
         FOLDER = 'data/backup/' 
-        FILE = FOLDER + str(datetime.date.today())+ '.csv'
+        FILE = FOLDER + str(datetime.date.today()) + '.csv'
         if not os.path.exists(FOLDER):
             os.makedirs(FOLDER)
         with open(FILE, 'a') as f:
@@ -128,11 +131,19 @@ class Data_Thread(threading.Thread):
                             self.log.error('GPS] setup failed')
                             self.running = False
                         else:
+<<<<<<< HEAD
                             self.GPS_TTY = setup.GPS_TTY
                             #TODO: Possibly need to set SIM TTY aswell somehow getInstance() 
                 else:
                     sleep(.1)
 
+=======
+                            self.GPS_TTY = setup.GPS_TTY            
+                else:
+                    sleep(.1)
+
+
+>>>>>>> d6831932d930265542b448d2f4788d3f13b932f0
         def isValidLocation(self, output):
             check = output.split(',')
             return len(output) != 0 and check[0] == '$GPGGA' and int(check[6]) != 0 # We only want GPGGA sentences with an Actual Fix (Fix != 0) 
@@ -154,29 +165,37 @@ class Data_Thread(threading.Thread):
                     try:
                         self.SIM_Serial = serial.Serial(port=self.SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
                         start = time.time()
+<<<<<<< HEAD
                         self.SIM_Serial.write('AT+CENG?\r\n')
                         sleep(.1)
+=======
+                        self.SIM_Serial.write('AT+CENG?\r\n') 
+                        sleep(.1) 
+>>>>>>> d6831932d930265542b448d2f4788d3f13b932f0
                         self.SIM_Output = ''
                         while self.SIM_Serial.inWaiting() > 0:
                             self.SIM_Output += self.SIM_Serial.read(6)
                         self.SIM_Serial.close()
+<<<<<<< HEAD
                         self.SIM_Output = self.SIM_Output.split('\n')[4:11]
+=======
+                        self.SIM_Output = self.SIM_Output.split('\n')[4:11] 
+>>>>>>> d6831932d930265542b448d2f4788d3f13b932f0
                         self.run_time = time.time() - start
                         self.go = False
                     except serial.SerialException as e:
                         self.log.error('SIM] something got unplugged!')
                         sleep(1)
                         setup = Setup(self.log)
-                        setup.setup_TTY();
+                        setup.setup_TTY()
                         count = 0
                         while not setup.configured and count < 10:
-                            setup.setup_TTY();
+                            setup.setup_TTY()
                             count += 0
                         if not setup.configured:
                             self.log.error('SIM] setup failed')
                             self.running = False
                         else:
                             self.SIM_TTY = setup.SIM_TTY
-                            #TODO: Possibly need to set SIM TTY aswell somehow getInstance() 
                 else:
                     sleep(.1)
