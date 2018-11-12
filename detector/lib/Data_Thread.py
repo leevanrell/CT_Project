@@ -1,19 +1,20 @@
 #!/usr/bin/python
 
-LOCAL_BACKUP_LOCATION = 'data/backup/' 
-import threading 
-import Queue 
-import json 
-import csv 
-import serial 
-import pynmea2 
-import os  
-import sys 
-import datetime 
-import time 
+import threading
+import Queue
+import json
+import csv
+import serial
+import pynmea2
+import os
+import sys
+import datetime
+import time
 import logging
-from time import sleep 
+from time import sleep
 from lib.Setup import Setup
+
+LOCAL_BACKUP_LOCATION = 'data/backup/'
 sys.path.append('../')
 
 class Data_Thread(threading.Thread): 
@@ -66,7 +67,7 @@ class Data_Thread(threading.Thread):
             MNC = cell_tower[6]           # Mobile Network Code
             LAC = cell_tower[7][:-2]      # Location Area code
         return {'time': time.strftime('%m-%d-%y %H:%M:%S'), 'MCC': MCC, 'MNC': MNC, 'LAC': LAC, 'Cell_ID': Cell_ID, 'rxl': int(rxl), 'arfcn': arfcn, 'bsic': bsic, 'lat': location.latitude, 'lon': location.longitude, 'satellites':  int(location.num_sats), 'GPS_quality': int(location.gps_qual), 'altitude': location.altitude, 'altitude_units': location.altitude_units}
-                        
+
     def start_GPS_and_SIM(self):
         self.GPS_Thread.start()
         self.SIM_Thread.start()
@@ -81,7 +82,7 @@ class Data_Thread(threading.Thread):
 
     def update_local(self, document):
         FOLDER = 'data/backup/' 
-        FILE = FOLDER  + str(datetime.date.today())+ '.csv'
+        FILE = FOLDER + str(datetime.date.today())+ '.csv'
         if not os.path.exists(FOLDER):
             os.makedirs(FOLDER)
         with open(FILE, 'a') as f:
@@ -95,13 +96,13 @@ class Data_Thread(threading.Thread):
             self.log = log
             self.GPS_TTY = GPS_TTY
             self.TIMEOUT = TIMEOUT
-            self.running = True 
-            self.go = True 
-            self.run_time = 0.0 
+            self.running = True
+            self.go = True
+            self.run_time = 0.0
             self.GPS_Output = ''
 
         def run(self):
-            while self.running: 
+            while self.running:
                 if self.go:
                     try:
                         self.GPS_Serial = serial.Serial(port=self.GPS_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
@@ -109,19 +110,19 @@ class Data_Thread(threading.Thread):
                         sleep(.1)
                         self.GPS_Output = self.GPS_Serial.readline()
                         while not self.isValidLocation(self.GPS_Output) and time.time() - start < self.TIMEOUT: # loops until has a valid GPS fix or until run time is more than 10 sec
-                            sleep(.1) 
+                            sleep(.1)
                             self.GPS_Output = self.GPS_Serial.readline()
                         self.GPS_Serial.close()
-                        self.run_time = time.time() - start 
-                        self.go = False 
+                        self.run_time = time.time() - start
+                        self.go = False
                     except serial.SerialException as e:
-                        self.log.error('GPS] something got unplugged!') 
+                        self.log.error('GPS] something got unplugged!')
                         sleep(1)
                         setup = Setup(self.log)
-                        setup.setup_TTY();
+                        setup.setup_TTY()
                         count = 0
                         while not setup.configured and count < 10:
-                            setup.setup_TTY();
+                            setup.setup_TTY()
                             count += 0
                         if not setup.configured:
                             self.log.error('GPS] setup failed')
@@ -129,10 +130,9 @@ class Data_Thread(threading.Thread):
                         else:
                             self.GPS_TTY = setup.GPS_TTY
                             #TODO: Possibly need to set SIM TTY aswell somehow getInstance() 
-                
                 else:
                     sleep(.1)
-                     
+
         def isValidLocation(self, output):
             check = output.split(',')
             return len(output) != 0 and check[0] == '$GPGGA' and int(check[6]) != 0 # We only want GPGGA sentences with an Actual Fix (Fix != 0) 
@@ -154,17 +154,17 @@ class Data_Thread(threading.Thread):
                     try:
                         self.SIM_Serial = serial.Serial(port=self.SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
                         start = time.time()
-                        self.SIM_Serial.write('AT+CENG?\r\n')  
-                        sleep(.1) 
+                        self.SIM_Serial.write('AT+CENG?\r\n')
+                        sleep(.1)
                         self.SIM_Output = ''
                         while self.SIM_Serial.inWaiting() > 0:
                             self.SIM_Output += self.SIM_Serial.read(6)
                         self.SIM_Serial.close()
-                        self.SIM_Output = self.SIM_Output.split('\n')[4:11] 
-                        self.run_time = time.time() - start 
+                        self.SIM_Output = self.SIM_Output.split('\n')[4:11]
+                        self.run_time = time.time() - start
                         self.go = False
                     except serial.SerialException as e:
-                        self.log.error('SIM] something got unplugged!') 
+                        self.log.error('SIM] something got unplugged!')
                         sleep(1)
                         setup = Setup(self.log)
                         setup.setup_TTY();

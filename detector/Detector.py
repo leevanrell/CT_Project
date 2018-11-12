@@ -1,9 +1,7 @@
 #!/usr/bin/python
-LED_gpio = 3 # GPIO pin for LED 
-button_gpio = 23 # GPIO pin for Button
-LOG_LOCATION = 'data/log/'
 
 import argparse 
+import logging
 import configparser
 import os  
 import sys 
@@ -12,7 +10,11 @@ import time
 import Queue
 import urllib2
 from lib.Setup import Setup
-from time import sleep 
+from time import sleep
+
+LED_gpio = 3 # GPIO pin for LED 
+button_gpio = 23 # GPIO pin for Button
+LOG_LOCATION = 'data/log/'
 
 os.chdir(os.path.dirname(os.path.abspath(__file__))) 
 
@@ -23,7 +25,6 @@ if not os.path.exists('./data/log'):
 if not os.path.exists('./data/backup'):
     os.makedirs('./data/backup')
 
-import logging
 log = logging.getLogger()
 log.setLevel('DEBUG')
 
@@ -36,19 +37,18 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(logging.Formatter('[%(asctime)s] [Detector.%(message)s'))
 log.addHandler(stream_handler)
 
+
 def main():
     setup = Setup(log);
     setup.setup_TTY();
     if not setup.configured:
         log.info('main] setup failed. exiting.')
-        quit()        
+        quit()
     if MODE:
-        pi(setup) 
+        pi(setup)
     else:
         laptop(setup)
     log.info('main] exiting')
-
-
 
 def laptop(setup):
     from lib.Logging_Thread import Logging_Thread
@@ -58,7 +58,7 @@ def laptop(setup):
     Data = Data_Thread(log, q, setup.SIM_TTY, setup.GPS_TTY, TIMEOUT, RATE) 
     Logger = Logging_Thread(log, q, HTTP_SERVER) 
     log.info('main] starting threads')
-    Data.start() 
+    Data.start()
     Logger.start()
 
     try:
