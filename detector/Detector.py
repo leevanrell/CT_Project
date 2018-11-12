@@ -1,22 +1,23 @@
 #!/usr/bin/python
-
-import argparse 
+import argparse
 import logging
 import configparser
-import os  
-import sys 
+import os
+import sys
 import datetime
-import time 
+import time
 import Queue
 import urllib2
-from lib.Setup import Setup
 from time import sleep
 
-LED_gpio = 3 # GPIO pin for LED 
-button_gpio = 23 # GPIO pin for Button
+import lib.Helper as Helper
+from lib.Setup import Setup
+
+LED_gpio = 3# GPIO pin for LED
+button_gpio = 23# GPIO pin for Button
 LOG_LOCATION = 'data/log/'
 
-os.chdir(os.path.dirname(os.path.abspath(__file__))) 
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 if not os.path.exists('./data'):
     os.makedirs('./data')
@@ -39,8 +40,8 @@ log.addHandler(stream_handler)
 
 
 def main():
-    setup = Setup(log);
-    setup.setup_TTY();
+    setup = Setup(log)
+    setup.setup_TTY()
     if not setup.configured:
         log.info('main] setup failed. exiting.')
         quit()
@@ -50,13 +51,14 @@ def main():
         laptop(setup)
     log.info('main] exiting')
 
+
 def laptop(setup):
     from lib.Logging_Thread import Logging_Thread
     from lib.Data_Thread import Data_Thread
 
-    q = Queue.Queue() 
-    Data = Data_Thread(log, q, setup.SIM_TTY, setup.GPS_TTY, TIMEOUT, RATE) 
-    Logger = Logging_Thread(log, q, HTTP_SERVER) 
+    q = Queue.Queue()
+    Data = Data_Thread(log, q, setup.SIM_TTY, setup.GPS_TTY, TIMEOUT, RATE)
+    Logger = Logging_Thread(log, q, HTTP_SERVER)
     log.info('main] starting threads')
     Data.start()
     Logger.start()
@@ -68,11 +70,11 @@ def laptop(setup):
         Data.join()
         Logger.running = False
         Logger.join()
-    except (KeyboardInterrupt, SystemExit): 
+    except (KeyboardInterrupt, SystemExit):
         log.info('main] detected KeyboardInterrupt: killing threads.')
         Data.running = False
         Logger.running = False
-        Data.join() 
+        Data.join()
         Logger.join()
 
 
@@ -94,17 +96,6 @@ def isPi():
         return False
 
 
-def isConnected(HTTP_SERVER): 
-    try:
-        if HTTP_SERVER.lower().startswith('http'):
-            urllib2.urlopen(HTTP_SERVER, timeout=1)
-        else
-          raise ValueError from None
-        return True
-    except urllib2.URLError as err:
-        return False
-
-rm
 if __name__ == '__main__':
     if not os.geteuid() == 0:
         log.error('setup] script must be run as root!')
@@ -126,7 +117,7 @@ if __name__ == '__main__':
     HTTP_SERVER = 'http://%s:3000/data' % args.server if(args.server[:4] != 'http') else args.server
     TIMEOUT = args.timeout
     RATE = args.rate
-    if not isConnected(HTTP_SERVER):
+    if not Helper.isConnected(HTTP_SERVER):
         log.warning('setup] cannot connect to %s'% HTTP_SERVER)
     log.info('setup] running as: %s, server address: %s' % ("Raspberry Pi" if MODE else "Laptop", HTTP_SERVER))
     main()
