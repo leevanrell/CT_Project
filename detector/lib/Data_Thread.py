@@ -103,7 +103,6 @@ class Data_Thread(threading.Thread):
                             self.running = False
                         else:
                             self.GPS_TTY = setup.GPS_TTY
-                            #TODO: Possibly need to set SIM TTY aswell somehow getInstance() 
                 else:
                     sleep(.1)
 

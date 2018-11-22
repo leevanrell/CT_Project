@@ -95,8 +95,7 @@ class DetectorLite():
             GPS_Serial.close()
             if Helper.isValidLocation(GPS_Output):
                 return GPS_Output
-            else:
-                return 'error: bad gps data'
+            return 'error: bad gps data'
         except serial.SerialException as e:
             self.log.error('GPS] something got unplugged!') 
             sleep(1)

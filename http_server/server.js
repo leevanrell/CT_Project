@@ -11,9 +11,9 @@ for (var k in interfaces) {
         var address = interfaces[k][k2];
         if (address.family === 'IPv4' && !address.internal) {
             addresses.push(address.address);
-        };
-    };
-};
+        }
+    }
+}
 
 const express = require('express'),
   app = express(),
@@ -39,7 +39,7 @@ const time = function() { return moment().format('MM-DD-YYYY HH:mm:ss');}
 if (!fs.existsSync(logDir)) {
   fs.mkdirSync(logDir);
 }
-const tsFormat = () => (new Date()).toLocaleTimeString();
+//const tsFormat = () => (new Date()).toLocaleTimeString();
 const logger = new (winston.Logger)({
   transports: [
     new (winston.transports.Console)({
