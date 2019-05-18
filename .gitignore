@@ -1,4 +1,5 @@
-*.log
-*.csv
-*.pyc
-*.out
+**.log
+**.csv
+**.pyc
+**.out
+**.key

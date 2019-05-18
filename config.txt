@@ -1,0 +1,3 @@
+[DEFAULT]
+DB_FILE = data.db
+TABLE = test
