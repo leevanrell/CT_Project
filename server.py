@@ -31,7 +31,6 @@ stream_handler.setFormatter(logging.Formatter('[%(asctime)s] %(message)s'))
 log.addHandler(stream_handler)
 app = Flask(__name__)
 
-
 @app.route("/")
 def hello():
     self.log.debug("received hello request")
@@ -40,31 +39,69 @@ def hello():
 @app.route("/status")
 def get_detector_status():
     self.log.debug("received status request")
+    for pid in psutil.pids():
+    p = psutil.Process(pid)
+    if p.name() == "python" and len(p.cmdline()) > 1 and "detector.py" in p.cmdline()[1]:
+        return "running"
+    else:
+        return "crashed"
 
 @app.route("/towers")
 def get_towers():
     self.log.debug("received towers request")
+
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    c.execute("""SELECT DISTINCT mcc,mnc,lac,Cell_ID FROM %s""" %TABLE)
+    c.execute("""SELECT DISTINCT mcc,mnc,lac,Cell_ID FROM %s""" % TABLE)
     rows = cur.fetchall()
-    str = ""
-    for row in rows:
-        str += row[1] + '-' + row[2] + '-' + row[3] + '-' + row[4]  +'\n'
+
+    towers = [authenticate_towers(conn, row) for row in rows]
+    conn.commit()
     conn.close()
+
+    str = ""
+    for tower in towers:
+        str += tower +'\n'
     return str
 
-@app.route("/tower/heatmap")
-def get_tower_heatmap():
-    pass
+def authenticate_towers(conn, row):
+    id = row[1] + '-' + row[2] + '-' + row[3] + '-' + row[4]
+    #mcc, mnc, lac, Cell_ID
+    c = conn.cursor()
+    c.execute("""SELECT DISTINCT * FROM towers WHERE id = %s;""" % (id))
+    cell_info = c.fetchall()
 
-@app.route("/tower/location")
-def get_tower_location():
-    pass
+    if cell_info:
+        in_db = cell_info[1]
+        lat = cell_info[2]
+        lon = cell_info[3]
+        range_ = cell_info[4]
+        radio_type = cell_info[5]       
+    else:
+        c.execute("""SELECT DISTINCT * FROM us_cell WHERE mcc = %s AND mnc = %s AND lac = %s AND cell_id = %s;""" % (row[0], row[1], row[2], row[3]))
+        cell_lookup = c.fetchall()
 
+        if cell_lookup:
+            in_db = True
+            lat = cell_lookup[7]
+            lon = cell_lookup[8]
+            range_ = cell_lookup[9]
+            radio_type = cell_lookup[2]
+        else:
+            in_db = False
+            lat = NULL
+            lon = NULL
+            range_ = NULL
+            radio_type = NULL
 
+    c.execute("""SELECT * FROM %s WHERE mcc = %s AND mnc = %s AND lac = %s AND cell_id = %s;""" % (TABLE, row[0], row[1], row[2], row[3]))
+    cell_lookup = c.fetchall()
+    est_lat, est_lon = triangulate(cell_lookup)
 
-
+    doc = [id, est_lat, est_lon, in_db, lat, lon, range_, radio_type]
+    c.execute("""INSERT OR REPLACE INTO towers VALUES (?, ?, ?, ?, ?, ?, ?, ?)""", doc);
+    conn.commit()
+    return doc
 
 #http://pythonfiddle.com/python-triangulation-implementati/
 def triangulate(points):
@@ -85,7 +122,6 @@ def triangulate(points):
         sum(p[0]*p[2] for p in points), # x
         sum(p[1]*p[2] for p in points) # y
     )
-
 
 if __name__ == '__main__':
     if not os.geteuid() == 0:

@@ -41,11 +41,12 @@ class DetectorLite():
                     location = pynmea2.parse(location)
                     for cell_tower in cell_towers:
                         document = self.getDocument(cell_tower, location)
-                        if document['GPS_quality'] != 0 and document['rxl'] > 7 and document['rxl'] != 255: 
+                        if document[11] != 0 and document[5] > 7 and document[5] != 255: 
                             docs.append(document)
                             self.log.info('added document to queue')
+                            self.log.info(document)
                             if len(docs) >= self.QUEUE_SIZE:
-                                 self.update_db(docs)
+                                 #self.update_db(docs)
                                  del doc[:]
                             sleep(self.RATE)
                         else:
@@ -70,7 +71,7 @@ class DetectorLite():
                 MCC = cell_tower[5]           # Mobile Country Code
                 MNC = cell_tower[6]           # Mobile Network Code
                 LAC = cell_tower[7][:-2]      # Location Area code
-        return (time.strftime('%m-%d-%y %H:%M:%S'),int(MCC),int(MNC),LAC,Cell_ID,int(rxl),arfcn,bsic,location.latitude,location.longitude,int(location.num_sats),int(location.gps_qual),location.altitude,location.altitude_units)
+        return (time.strftime('%m-%d-%y %H:%M:%S'),int(MCC),int(MNC),int(LAC, 16),int(Cell_ID, 16),int(rxl),arfcn,bsic,location.latitude,location.longitude,int(location.num_sats),int(location.gps_qual),location.altitude,location.altitude_units)
 
     def getCell(self):
         try:
@@ -89,7 +90,7 @@ class DetectorLite():
             setup = Setup(self.log)
             setup.setup_TTY()
             count = 0
-            while not setup.configured and count < 10:
+            while not setup.configured and count < 5:
                 setup.setup_TTY()
                 count += 0
                 self.log.error('SIM, Retrying setup: %s', count)
@@ -121,7 +122,7 @@ class DetectorLite():
             setup = Setup(self.log)
             setup.setup_TTY()
             count = 0
-            while not setup.configured and count < 10:
+            while not setup.configured and count < 5:
                 setup.setup_TTY()
                 count += 0
                 self.log.error('GPS, Retrying setup: %s', count)

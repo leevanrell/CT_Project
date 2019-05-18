@@ -34,7 +34,6 @@ stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(logging.Formatter('[%(asctime)s] %(message)s'))
 log.addHandler(stream_handler)
 
-
 def main():
     setup = Setup(log, DB_FILE, TABLE)
     setup.setup_TTY()
@@ -51,6 +50,7 @@ def main():
     except (KeyboardInterrupt, SystemExit):
         log.info('detected KeyboardInterrupt: stopping job')
         detector.run = False
+    sleep(30)
 
 if __name__ == '__main__':
     if not os.geteuid() == 0:

@@ -2,4 +2,4 @@
 default: all
 
 all:
-	pipenv install --system
+	pipenv install --deploy --system

@@ -16,7 +16,7 @@ class Setup():
 
     def setup_DB(self):
         try:
-            conn = sqlite3.conect(self.DB_FILE)
+            conn = sqlite3.connect(self.DB_FILE)
             c = conn.cursor()
             c.execute(
                 """CREATE TABLE IF NOT EXISTS %s (
@@ -24,7 +24,7 @@ class Setup():
                     mcc integer,
                     mnc integer,
                     lac integer,
-                    Cell_ID integer,
+                    cell_id integer,
                     rxl integer,
                     arfcn text,
                     bsic text,
@@ -35,6 +35,17 @@ class Setup():
                     altitude float,
                     altitude_units text
                 );""" % TABLE)
+            c.execute(
+                """CREATE TABLE IF NOT EXISTS towers (
+                    id PRIMARY KEY,
+                    est_lat float,
+                    est_lon float
+                    in_db boolean,
+                    lat float,
+                    lon float,
+                    range integer,
+                    radio_type integer
+                );""")
             conn.commit()
             conn.close()
         except Exception as e:
@@ -45,12 +56,15 @@ class Setup():
         self.log.info('setting TTY connections')
         configured_SIM = False
         configured_GPS = False
+
         found_SIM = self.find_SIM_TTY()
         if found_SIM:
             configured_SIM = self.config_SIM()
+
         found_GPS = self.find_GPS_TTY()
         if found_GPS:
             configured_GPS = self.config_GPS()
+
         if not configured_GPS or not configured_SIM:
             self.log.error('failed to configure TTY: GPS - %s, SIM - %s' % (configured_GPS, configured_SIM))
         else:
