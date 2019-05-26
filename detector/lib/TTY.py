@@ -42,13 +42,13 @@ class TTY():
             for count in range(0, 10):
                 self.SIM_TTY = f'/dev/ttyUSB{count}'
                 try:
-                    Serial = serial.Serial(port=self.SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
+                    Serial = serial.Serial(port=self.SIM_TTY, baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
                     Serial.write(b'AT\r\n')
                     sleep(.5)
                     for i in range(0, 5):
                         check = Serial.readline()
                         self.log.debug(check)
-                        if check == 'OK\r\n':
+                        if check == b'OK\r\n':
                             self.log.info(f'set SIM_TTY to {self.SIM_TTY}')
                             return True
                     Serial.close()
@@ -59,8 +59,10 @@ class TTY():
     def config_SIM(self):
         self.log.info('configuring SIM')
         try:
-            SIM_Serial = serial.Serial(port=self.SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
+            SIM_Serial = serial.Serial(port=self.SIM_TTY, baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
             SIM_Serial.write('AT+CENG=1,1' + '\r\n')
+            sleep(.5)
+            SIM_Serial.write('AT+IPR=115200' + '\r\n')
             sleep(.5)
             SIM_Serial.close()
         except serial.SerialException as e:
@@ -85,7 +87,7 @@ class TTY():
         check = Serial.readline()
         Serial.close()
         self.log.info(check)
-        if check[:1] == '$':
+        if check[:1] == b'$':
             self.log.info('set GPS_TTY to ' + self.GPS_TTY)
             return True
         return False
