@@ -60,9 +60,9 @@ class TTY():
         self.log.info('configuring SIM')
         try:
             SIM_Serial = serial.Serial(port=self.SIM_TTY, baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
-            SIM_Serial.write(b'AT+CENG=1,1' + '\r\n')
+            SIM_Serial.write(b'AT+CENG=1,1\r\n')
             sleep(.5)
-            SIM_Serial.write(b'AT+IPR=115200' + '\r\n')
+            SIM_Serial.write(b'AT+IPR=115200\r\n')
             sleep(.5)
             SIM_Serial.close()
         except serial.SerialException as e:
@@ -73,7 +73,7 @@ class TTY():
     def find_GPS_TTY(self):
         for retry in range(0, 6):
             for count in range(0, 10):
-                self.GPS_TTY = '/dev/ttyUSB%s' % count
+                self.GPS_TTY = f'/dev/ttyUSB{count}'
                 try:
                     if self.test_GPS(9600) or self.test_GPS(115200): 
                         return True
@@ -99,9 +99,9 @@ class TTY():
             sleep(.5)
             GPS_Serial.write(b'$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29<CR><LF> ' + '\r\n') #Configures GPS to only output GPGGA Sentences
             sleep(.5)
-            GPS_Serial.write(b'$PMTK220,100*2F<CR><LF>' + '\r\n')
+            GPS_Serial.write(b'$PMTK220,100*2F<CR><LF>\r\n')
             sleep(.5)
-            GPS_Serial.write(b'$PMTK251,115200*1F<CR><LF>' + '\r\n')
+            GPS_Serial.write(b'$PMTK251,115200*1F<CR><LF>\r\n')
             sleep(.5)
             GPS_Serial.close()
         except serial.SerialException as e:
