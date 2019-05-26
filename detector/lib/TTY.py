@@ -33,14 +33,14 @@ class TTY():
             configured_GPS = self.config_GPS()
 
         if not configured_GPS or not configured_SIM:
-            self.log.error('failed to configure TTY: GPS - %s, SIM - %s' % (configured_GPS, configured_SIM))
+            self.log.error(f'failed to configure TTY: GPS - {configured_GPS}, SIM - {configured_SIM}')
         else:
             self.configured = True
 
     def find_SIM_TTY(self):
         for retry in range(0, 6):
             for count in range(0, 10):
-                self.SIM_TTY = '/dev/ttyUSB%s' % count
+                self.SIM_TTY = f'/dev/ttyUSB{count}'
                 try:
                     Serial = serial.Serial(port=self.SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
                     Serial.write(b'AT\r\n')
@@ -49,7 +49,7 @@ class TTY():
                         check = Serial.readline()
                         self.log.debug(check)
                         if check == 'OK\r\n':
-                            self.log.info('set SIM_TTY to ' + self.SIM_TTY)
+                            self.log.info(f'set SIM_TTY to {self.SIM_TTY}')
                             return True
                     Serial.close()
                 except serial.SerialException as e:
@@ -84,6 +84,7 @@ class TTY():
         sleep(.5)
         check = Serial.readline()
         Serial.close()
+        self.log.info(check)
         if check[:1] == '$':
             self.log.info('set GPS_TTY to ' + self.GPS_TTY)
             return True

@@ -16,7 +16,7 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 root = Path('.')
 ROOT_LOCATION = str(root.resolve()) + '/' 
-LOG_LOCATION = str(ROOT_LOCATION + 'log/')
+LOG_LOCATION = ROOT_LOCATION + 'log/'
 if not os.path.exists(LOG_LOCATION):
     os.makedirs(LOG_LOCATION)
 
