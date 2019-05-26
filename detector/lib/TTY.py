@@ -4,53 +4,20 @@ import serial
 import logging
 from time import sleep
 
-class Setup():
+class TTY():
 
-    def __init__(self, log, DB_FILE, TABLE):
+    def __init__(self, log):
         self.log = log
         self.SIM_TTY = ''
         self.GPS_TTY = ''
-        self.TABLE = TABLE
-        self.DB_FILE = DB_FILE
         self.configured = False
+        self.setup_TTY()
 
-    def setup_DB(self):
-        try:
-            conn = sqlite3.connect(self.DB_FILE)
-            c = conn.cursor()
-            c.execute(
-                """CREATE TABLE IF NOT EXISTS %s (
-                    time text PRIMARY KEY,
-                    mcc integer,
-                    mnc integer,
-                    lac integer,
-                    cell_id integer,
-                    rxl integer,
-                    arfcn text,
-                    bsic text,
-                    lat float,
-                    lon float,
-                    satellites integer,
-                    GPS_quality text,
-                    altitude float,
-                    altitude_units text
-                );""" % TABLE)
-            c.execute(
-                """CREATE TABLE IF NOT EXISTS towers (
-                    id PRIMARY KEY,
-                    est_lat float,
-                    est_lon float
-                    in_db boolean,
-                    lat float,
-                    lon float,
-                    range integer,
-                    radio_type integer
-                );""")
-            conn.commit()
-            conn.close()
-        except Exception as e:
-            log.error('failed to connect to db: %s' % e)
-
+    def reset(self):
+        self.configured = False    
+        self.SIM_TTY = ''
+        self.GPS_TTY = ''
+        setup_TTY(self)
 
     def setup_TTY(self):
         self.log.info('setting TTY connections')

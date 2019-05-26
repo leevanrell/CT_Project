@@ -1,3 +1,4 @@
 [DEFAULT]
 DB_FILE = data.db
 TABLE = test
+HTTP_SERVER = 127.0.0.1

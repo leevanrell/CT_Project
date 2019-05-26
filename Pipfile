@@ -8,8 +8,8 @@ verify_ssl = true
 [packages]
 pynmea2 = "*"
 flask = "*"
-psutil = "*"
 serial = "*"
+pyserial = "*"
 
 [requires]
 python_version = "3.6"
