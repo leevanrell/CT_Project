@@ -60,9 +60,9 @@ class TTY():
         self.log.info('configuring SIM')
         try:
             SIM_Serial = serial.Serial(port=self.SIM_TTY, baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
-            SIM_Serial.write('AT+CENG=1,1' + '\r\n')
+            SIM_Serial.write(b'AT+CENG=1,1' + '\r\n')
             sleep(.5)
-            SIM_Serial.write('AT+IPR=115200' + '\r\n')
+            SIM_Serial.write(b'AT+IPR=115200' + '\r\n')
             sleep(.5)
             SIM_Serial.close()
         except serial.SerialException as e:
