@@ -1,0 +1,13 @@
+-i https://pypi.org/simple
+click==7.0
+flask==1.0.3
+future==0.17.1
+iso8601==0.1.12
+itsdangerous==1.1.0
+jinja2==2.10.1
+markupsafe==1.1.1
+pynmea2==1.15.0
+pyserial==3.4
+pyyaml==5.1
+serial==0.0.97
+werkzeug==0.15.4
