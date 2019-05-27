@@ -103,7 +103,7 @@ class TTY():
         try:
             GPS_Serial = serial.Serial(port=self.GPS_TTY, baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)  
             sleep(.5)
-            GPS_Serial.write(b'$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29<CR><LF> ' + '\r\n') #Configures GPS to only output GPGGA Sentences
+            GPS_Serial.write(b'$PMTK314,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0*29<CR><LF>\r\n') #Configures GPS to only output GPGGA Sentences
             sleep(.5)
             GPS_Serial.write(b'$PMTK220,100*2F<CR><LF>\r\n')
             sleep(.5)
