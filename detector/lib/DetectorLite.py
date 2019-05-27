@@ -155,8 +155,10 @@ class DetectorLite():
         if len(output) != 0 and len(check) >= 6 and check[0] == '$GPGGA':
             try:
                 l = pynmea2.parse(output)
-                self.log.debug(l.gps_qual)
-                return True
+                if int(l.gps_qual) >= 2:
+                    self.log.debug(l.gps_qual)
+                    return True
+                return False
             except ParseError:
                 return False
         return False 
