@@ -76,11 +76,11 @@ class DetectorLite():
     def getCell(self):
         try:
             SIM_Serial = serial.Serial(port=self.TTY.SIM_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
-            SIM_Serial.write('AT+CENG?\r\n')  
+            SIM_Serial.write(b'AT+CENG?\r\n')  
             sleep(.1)  
             SIM_Output = ''
             while SIM_Serial.inWaiting() > 0:
-                SIM_Output += SIM_Serial.read(6)
+                SIM_Output += SIM_Serial.read(6).decode('ascii')
             SIM_Serial.close()
             SIM_Output = SIM_Output.split('\n')[4:11] 
             return SIM_Output
@@ -103,7 +103,7 @@ class DetectorLite():
             GPS_Serial = serial.Serial(port=self.TTY.GPS_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)     
             sleep(.1)
             GPS_Output = ""
-            GPS_Output = GPS_Serial.readline()
+            GPS_Output = GPS_Serial.readline().decode('ascii')
             start = time.time()
             while not self.isValidLocation(GPS_Output) and time.time() - start < self.TIMEOUT: 
                 sleep(.1) 
