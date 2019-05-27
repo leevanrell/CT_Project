@@ -36,6 +36,8 @@ class DetectorLite():
             try:
                 cell_towers = self.getCell()
                 location = self.getLocation()
+                self.log.debug(cell_towers)
+                self.log.debug(location)
                 if location[:5] != "error" and cell_towers[:5] != "error":
                     location = pynmea2.parse(location)
                     for cell_tower in cell_towers:
@@ -55,8 +57,6 @@ class DetectorLite():
         self.update_local_db(docs)
 
     def getDocument(self, cell_tower, location):
-        self.log.debug(cell_tower)
-        self.log.debug(location)
         cell_tower = cell_tower.split(',')
         if len(cell_tower) > 6:
             arfcn = cell_tower[1][1:]         # Absolute radio frequency channel number
@@ -150,4 +150,4 @@ class DetectorLite():
 
     def isValidLocation(self, output):
         check = output.split(',')
-        return len(output) != 0 and check[0] == '$GPGGA' and len(check[6]) != 0 and int(check[6]) != 0 # we only want GPGGA sentences with an actual fix (Fix != 0)
+        return len(output) != 0 and check[0] == '$GPGGA' and len(check) >= 6 and len(check[6]) != 0 and int(check[6]) != 0 
