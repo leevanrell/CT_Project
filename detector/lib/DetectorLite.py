@@ -152,7 +152,7 @@ class DetectorLite():
 
     def update_remote_db(self, docs):
         try:
-            requests.post(self.HTTP_SERVER + '/update', json=docs, timeout=1)
+            requests.post(self.HTTP_SERVER + 'update', json=docs, timeout=1)
         except requests.ConnectionError:
             self.log.warning('error: connection error')
         except requests.HTTPError:

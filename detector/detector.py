@@ -61,7 +61,7 @@ if __name__ == '__main__':
     DB_FILE = ROOT_LOCATION + config['DEFAULT']['DB_FILE']
     TABLE = config['DEFAULT']['TABLE']
     HTTP_SERVER = config['DEFAULT']['HTTP_SERVER']
-    if HTTP_SERVER[:-1] != '/':
-        HTTP_SERVER += '/'
+    # if HTTP_SERVER[:-1] != '/':
+    #     HTTP_SERVER += '/'
 
     main()
