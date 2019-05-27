@@ -26,11 +26,12 @@ class DetectorLite():
         self.RATE = 1
         self.QUEUE_SIZE = 25
         if not self.TTY.configured:
-            log.info('setup failed. exiting.')
+            self.log.info('setup failed. exiting.')
             self.run = False
 
     def start(self):
         docs = []
+        self.log.info('starting data collection')
         while self.run:
             try:
                 location = self.getLocation()
