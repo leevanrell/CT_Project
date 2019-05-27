@@ -80,7 +80,7 @@ class DetectorLite():
                 MNC = cell_tower[6]           # Mobile Network Code
                 LAC = cell_tower[7][:-2]      # Location Area code
             if arfcn and rxl and bsic and Cell_ID and MCC and MNC and LAC:
-                return (time.strftime('%m-%d-%y %H:%M:%S'),int(MCC),int(MNC),int(LAC, 16),int(Cell_ID, 16),int(rxl),arfcn,bsic,location.latitude,location.longitude,int(location.num_sats),int(location.gps_qual),location.altitude,location.altitude_units)
+                return (time.strftime('%m-%d-%y %H:%M:%S'),int(MCC),int(MNC),int(LAC, 16),int(Cell_ID, 16),int(rxl),arfcn,bsic,location.latitude,location.longitude,int(location.num_sats),location.gps_qual,location.altitude,location.altitude_units)
             else:
                 return False
         return False
@@ -163,11 +163,13 @@ class DetectorLite():
         if len(output) != 0 and len(check) >= 6 and check[0] == '$GPGGA':
             try:
                 location = pynmea2.parse(output)
-                if int(location.num_sats) and int(location.gps_qual):
+                if int(location.num_sats) and int(location.gps_qual) and float(location.altitude) and float(location.latitude) and float(location.longitude):
                     return True
                 return False
             except ParseError:
                 return False
             except ValueError:
+                return False
+            except AttributeError:
                 return False
         return False 
