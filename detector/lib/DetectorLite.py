@@ -9,6 +9,7 @@ import datetime
 import time
 import sqlite3
 from time import sleep
+from pynmea2 import ParseError
 
 from .TTY import TTY
 
@@ -63,7 +64,6 @@ class DetectorLite():
 
     def getDocument(self, cell_tower, location):
         cell_tower = cell_tower.split(',')
-        self.log.debug(len(cell_tower))
         if len(cell_tower) >= 8:
             arfcn = cell_tower[1][1:]         # Absolute radio frequency channel number
             rxl = cell_tower[2]               # Receive level (signal stregnth)
@@ -124,6 +124,7 @@ class DetectorLite():
                     GPS_Output = ""
             GPS_Serial.close()
             if self.isValidLocation(GPS_Output):
+                self.log.debug(GPS_Output)
                 return GPS_Output
             return False
         except serial.SerialException as e:
@@ -162,10 +163,11 @@ class DetectorLite():
         if len(output) != 0 and len(check) >= 6 and check[0] == '$GPGGA':
             try:
                 l = pynmea2.parse(output)
-                if int(l.gps_qual) >= 2:
-                    self.log.debug(l.gps_qual)
+                if int(location.num_sats) and int(location.gps_qual):
                     return True
                 return False
             except ParseError:
+                return False
+            except ValueError:
                 return False
         return False 
