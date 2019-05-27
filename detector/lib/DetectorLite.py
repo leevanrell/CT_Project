@@ -12,7 +12,6 @@ from time import sleep
 
 from .TTY import TTY
 
-QUEUE_SIZE = 10
 
 class DetectorLite():
 
@@ -43,11 +42,12 @@ class DetectorLite():
                             document = self.getDocument(cell_tower, location)
                             if document and document[11] != 0 and document[5] > 7 and document[5] != 255: 
                                 docs.append(document)
-                                self.log.info('added document to queue')
+                                self.log.debug('added document to queue')
                                 #self.log.info(document)
                                 if len(docs) >= self.QUEUE_SIZE:
-                                     self.update_local_db(docs)
-                                     del docs[:]
+                                    self.log.info('making bulk upload')
+                                    self.update_local_db(docs)
+                                    del docs[:]
                                 sleep(self.RATE)
                             else:
                                 pass
@@ -87,7 +87,7 @@ class DetectorLite():
             sleep(.1)  
             SIM_Output = ''
             while SIM_Serial.inWaiting() > 0:
-                SIM_Output += SIM_Serial.read(6).decode('ascii')
+                SIM_Output += SIM_Serial.readline().decode('ascii').strip()
             SIM_Serial.close()
             SIM_Output = SIM_Output.split('\n')[4:11] 
             return SIM_Output
