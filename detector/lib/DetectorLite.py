@@ -62,11 +62,11 @@ class DetectorLite():
         self.update_local_db(docs)
 
     def getDocument(self, cell_tower, location):
-        cell_tower = cell_tower.split(',')
-        if len(cell_tower) > 6:
+        cell_tower = None, cell_tower.split(',')
+        if len(cell_tower) >= 8:
             arfcn = cell_tower[1][1:]         # Absolute radio frequency channel number
             rxl = cell_tower[2]               # Receive level (signal stregnth)
-            if(len(cell_tower) > 9): # +CENG:0, '<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>'
+            if(len(cell_tower) >= 11): # +CENG:0, '<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>'
                 bsic = cell_tower[6]          # Base station identity code
                 Cell_ID = cell_tower[7]       # Unique Identifier
                 MCC = cell_tower[4]           # Mobile Country Code
@@ -78,7 +78,10 @@ class DetectorLite():
                 MCC = cell_tower[5]           # Mobile Country Code
                 MNC = cell_tower[6]           # Mobile Network Code
                 LAC = cell_tower[7][:-2]      # Location Area code
-            return (time.strftime('%m-%d-%y %H:%M:%S'),int(MCC),int(MNC),int(LAC, 16),int(Cell_ID, 16),int(rxl),arfcn,bsic,location.latitude,location.longitude,int(location.num_sats),int(location.gps_qual),location.altitude,location.altitude_units)
+            if arfcn and rxl and bsic and Cell_ID and MCC and MNC and LAC:
+                return (time.strftime('%m-%d-%y %H:%M:%S'),int(MCC),int(MNC),int(LAC, 16),int(Cell_ID, 16),int(rxl),arfcn,bsic,location.latitude,location.longitude,int(location.num_sats),int(location.gps_qual),location.altitude,location.altitude_units)
+            else:
+                return false
         return False
 
     def getCell(self):
@@ -114,7 +117,10 @@ class DetectorLite():
             start = time.time()
             while not self.isValidLocation(GPS_Output) and time.time() - start < self.TIMEOUT: 
                 sleep(.1) 
-                GPS_Output = GPS_Serial.readline().decode('ascii').strip()
+                try:
+                    GPS_Output = GPS_Serial.readline().decode('ascii').strip()
+                except UnicodeDecodeError:
+                    GPS_Output = ""
             GPS_Serial.close()
             if self.isValidLocation(GPS_Output):
                 return GPS_Output
