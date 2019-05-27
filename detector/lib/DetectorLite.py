@@ -52,9 +52,9 @@ class DetectorLite():
                                 sleep(self.RATE)
                             else:
                                 pass
-                                self.log.debug(f"dropped bad document: {cell_tower}, {location}")
+                                self.log.debug(f"dropped bad document: {cell_tower}")
                         except ValueError as e:
-                            self.log.debug(f"dropped bad document: {cell_tower}, {location}")
+                            self.log.debug(f"dropped bad document: {cell_tower}")
                             pass
 
             except (KeyboardInterrupt, SystemExit):
@@ -154,7 +154,8 @@ class DetectorLite():
         check = output.split(',')
         if len(output) != 0 and len(check) >= 6 and check[0] == '$GPGGA':
             try:
-                pynmea2.parse(output)
+                l = pynmea2.parse(output)
+                self.log.debug(l.gps_qual)
                 return True
             except ParseError:
                 return False
