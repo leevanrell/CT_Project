@@ -46,7 +46,7 @@ class DetectorLite():
                                 docs.append(document)
                                 self.log.debug('added document to queue')
                                 #self.log.info(document)
-                                if len(docs) >= self.QUEUE_SIZE:
+                                if len(docs) > self.QUEUE_SIZE:
                                     self.log.info('making bulk upload')
                                     self.update_local_db(docs)
                                     del docs[:]
@@ -55,7 +55,7 @@ class DetectorLite():
                                 pass
                                 self.log.debug(f"dropped bad document: {cell_tower}")
                         except ValueError as e:
-                            self.log.debug(f"dropped bad document: {cell_tower}")
+                            self.log.debug(f"dropped bad document: {cell_tower} {e}")
                             pass
 
             except (KeyboardInterrupt, SystemExit):
