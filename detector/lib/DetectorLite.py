@@ -87,6 +87,7 @@ class DetectorLite():
             while SIM_Serial.inWaiting() > 0:
                 SIM_Output += SIM_Serial.read(6).decode('ascii')
             SIM_Serial.close()
+            self.log.debug(SIM_Output)
             SIM_Output = SIM_Output.split('\n')[4:11] 
             return SIM_Output
         except serial.SerialException as e:
@@ -113,6 +114,7 @@ class DetectorLite():
             while not self.isValidLocation(GPS_Output) and time.time() - start < self.TIMEOUT: 
                 sleep(.1) 
                 self.GPS_Output = GPS_Serial.readline()
+            self.log.debug(GPS_Output)
             GPS_Serial.close()
             if self.isValidLocation(GPS_Output):
                 return GPS_Output
