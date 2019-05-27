@@ -36,8 +36,6 @@ class DetectorLite():
             try:
                 cell_towers = self.getCell()
                 location = self.getLocation()
-                self.log.debug(cell_towers)
-                self.log.debug(location)
                 if location and cell_towers:
                     location = pynmea2.parse(location)
                     for cell_tower in cell_towers:
@@ -49,7 +47,7 @@ class DetectorLite():
                                 #self.log.info(document)
                                 if len(docs) >= self.QUEUE_SIZE:
                                      self.update_local_db(docs)
-                                     del doc[:]
+                                     del docs[:]
                                 sleep(self.RATE)
                             else:
                                 self.log.debug(f"dropped bad document: {document}")
@@ -121,7 +119,7 @@ class DetectorLite():
             return False
         except serial.SerialException as e:
             self.log.error('GPS, something got unplugged!') 
-            sleep(1) # why sleep here?
+            sleep(1)
             self.TTY.reset()
             for c in range(0, 5):
                 if self.TTY.configured:
