@@ -62,7 +62,7 @@ class DetectorLite():
         self.update_local_db(docs)
 
     def getDocument(self, cell_tower, location):
-        cell_tower = None, cell_tower.split(',')
+        cell_tower = cell_tower.split(',')
         self.log.debug(len(cell_tower))
         if len(cell_tower) >= 8:
             arfcn = cell_tower[1][1:]         # Absolute radio frequency channel number
