@@ -172,4 +172,6 @@ class DetectorLite():
                 return False
             except AttributeError:
                 return False
+            except KeyError:
+                return False
         return False 
