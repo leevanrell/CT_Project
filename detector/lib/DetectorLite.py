@@ -52,11 +52,9 @@ class DetectorLite():
                                     del docs[:]
                                 sleep(self.RATE)
                             else:
-                                pass
                                 self.log.debug(f"dropped bad document: {cell_tower}")
                         except ValueError as e:
                             self.log.debug(f"dropped bad document: {cell_tower} {e}")
-                            pass
 
             except (KeyboardInterrupt, SystemExit):
                 self.run = False
@@ -64,6 +62,7 @@ class DetectorLite():
 
     def getDocument(self, cell_tower, location):
         cell_tower = cell_tower.split(',')
+        self.log.debug(cell_tower)
         if len(cell_tower) >= 8:
             arfcn = cell_tower[1][1:]         # Absolute radio frequency channel number
             rxl = cell_tower[2]               # Receive level (signal stregnth)
