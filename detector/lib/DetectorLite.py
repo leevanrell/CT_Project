@@ -12,7 +12,7 @@ from time import sleep
 
 from .TTY import TTY
 
-QUEUE_SIZE = 25
+QUEUE_SIZE = 10
 
 class DetectorLite():
 
