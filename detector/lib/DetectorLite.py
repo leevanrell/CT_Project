@@ -64,7 +64,7 @@ class DetectorLite():
         cell_tower = cell_tower.split(',')
         self.log.debug(cell_tower)
         if len(cell_tower) >= 8:
-            arfcn = cell_tower[1][1:]         # Absolute radio frequency channel number
+            arfcn = cell_tower[1]             # Absolute radio frequency channel number
             rxl = cell_tower[2]               # Receive level (signal stregnth)
             if(len(cell_tower) >= 11): # +CENG:0, '<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>'
                 bsic = cell_tower[6]          # Base station identity code
@@ -77,7 +77,7 @@ class DetectorLite():
                 Cell_ID = cell_tower[4]       # Unique Identifier
                 MCC = cell_tower[5]           # Mobile Country Code
                 MNC = cell_tower[6]           # Mobile Network Code
-                LAC = cell_tower[7][:-2]      # Location Area code
+                LAC = cell_tower[7]           # Location Area code
             if arfcn and rxl and bsic and Cell_ID and MCC and MNC and LAC:
                 return (time.strftime('%m-%d-%y %H:%M:%S'),int(MCC),int(MNC),int(LAC, 16),int(Cell_ID, 16),int(rxl),arfcn,bsic,location.latitude,location.longitude,int(location.num_sats),location.gps_qual,location.altitude,location.altitude_units)
             else:
@@ -91,9 +91,9 @@ class DetectorLite():
             sleep(.1)  
             SIM_Output = ''
             while SIM_Serial.inWaiting() > 0:
-                SIM_Output += SIM_Serial.readline().decode('ascii').strip('\"')strip('\r')
+                SIM_Output += SIM_Serial.readline().decode('ascii').strip('\"').strip('\r')
             SIM_Serial.close()
-            SIM_Output = filter(None, SIM_Output.split('\n'))
+            SIM_Output = list(filter(None, SIM_Output.split('\n')))
             self.log.debug(SIM_Output)
             return SIM_Output
         except serial.SerialException as e:
@@ -119,7 +119,7 @@ class DetectorLite():
             while not self.isValidLocation(GPS_Output) and time.time() - start < self.TIMEOUT: 
                 sleep(.1) 
                 try:
-                    GPS_Output = GPS_Serial.readline().decode('ascii').strip()
+                    GPS_Output = GPS_Serial.readline().decode('ascii').strip('\r')
                 except UnicodeDecodeError:
                     GPS_Output = ""
             GPS_Serial.close()
