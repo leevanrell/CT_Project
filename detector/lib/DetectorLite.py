@@ -41,17 +41,21 @@ class DetectorLite():
                 if location[:5] != "error" and cell_towers[:5] != "error":
                     location = pynmea2.parse(location)
                     for cell_tower in cell_towers:
-                        document = self.getDocument(cell_tower, location)
-                        if document[11] != 0 and document[5] > 7 and document[5] != 255: 
-                            docs.append(document)
-                            self.log.info('added document to queue')
-                            #self.log.info(document)
-                            if len(docs) >= self.QUEUE_SIZE:
-                                 self.update_local_db(docs)
-                                 del doc[:]
-                            sleep(self.RATE)
-                        else:
-                            self.log.debug(f"dropped bad document: {document['GPS_quality']} {document['rxl']} {document['Cell_ID']}")
+                        try:
+                            document = self.getDocument(cell_tower, location)
+                            if document[11] != 0 and document[5] > 7 and document[5] != 255: 
+                                docs.append(document)
+                                self.log.info('added document to queue')
+                                #self.log.info(document)
+                                if len(docs) >= self.QUEUE_SIZE:
+                                     self.update_local_db(docs)
+                                     del doc[:]
+                                sleep(self.RATE)
+                            else:
+                                self.log.debug(f"dropped bad document: {document['GPS_quality']} {document['rxl']} {document['Cell_ID']}")
+                        except ValueError as e:
+                            self.log.debug(f"dropped bad docuemnt: {cell_tower}, {location}")
+
             except (KeyboardInterrupt, SystemExit):
                 self.run = False
         self.update_local_db(docs)
