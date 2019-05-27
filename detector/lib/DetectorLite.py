@@ -51,9 +51,9 @@ class DetectorLite():
                                 sleep(self.RATE)
                             else:
                                 pass
-                                #self.log.debug(f"dropped bad document: {cell_tower}, {location}")
+                                self.log.debug(f"dropped bad document: {cell_tower}, {location}")
                         except ValueError as e:
-                            #self.log.debug(f"dropped bad document: {cell_tower}, {location}")
+                            self.log.debug(f"dropped bad document: {cell_tower}, {location}")
                             pass
 
             except (KeyboardInterrupt, SystemExit):
