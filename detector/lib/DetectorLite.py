@@ -88,7 +88,7 @@ class DetectorLite():
             sleep(.1)  
             SIM_Output = ''
             while SIM_Serial.inWaiting() > 0:
-                SIM_Output += SIM_Serial.readline().decode('ascii').strip()
+                SIM_Output += SIM_Serial.readline().decode('ascii').strip('\r')
             SIM_Serial.close()
             SIM_Output = SIM_Output.split('\n')[4:11] 
             return SIM_Output
