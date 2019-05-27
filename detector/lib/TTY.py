@@ -54,7 +54,6 @@ class TTY():
         sleep(.5)
         for i in range(0, 5):
             check = Serial.readline()
-            self.log.debug(check)
             if check == b'OK\r\n':
                 self.log.info(f'set SIM_TTY to {self.SIM_TTY}')
                 Serial.close()
