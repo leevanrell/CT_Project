@@ -63,6 +63,7 @@ class DetectorLite():
 
     def getDocument(self, cell_tower, location):
         cell_tower = None, cell_tower.split(',')
+        self.log.debug(len(cell_tower))
         if len(cell_tower) >= 8:
             arfcn = cell_tower[1][1:]         # Absolute radio frequency channel number
             rxl = cell_tower[2]               # Receive level (signal stregnth)
@@ -81,7 +82,7 @@ class DetectorLite():
             if arfcn and rxl and bsic and Cell_ID and MCC and MNC and LAC:
                 return (time.strftime('%m-%d-%y %H:%M:%S'),int(MCC),int(MNC),int(LAC, 16),int(Cell_ID, 16),int(rxl),arfcn,bsic,location.latitude,location.longitude,int(location.num_sats),int(location.gps_qual),location.altitude,location.altitude_units)
             else:
-                return false
+                return False
         return False
 
     def getCell(self):
