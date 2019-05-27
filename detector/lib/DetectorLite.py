@@ -24,8 +24,8 @@ class DetectorLite():
         self.DB_FILE = DB_FILE
         self.TABLE = TABLE
         self.TIMEOUT = 5
-        self.RATE = 1
-        self.QUEUE_SIZE = 25
+        self.RATE = 0.5
+        self.QUEUE_SIZE = 10
         if not self.TTY.configured:
             self.log.info('setup failed. exiting.')
             self.run = False
