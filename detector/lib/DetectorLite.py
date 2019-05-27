@@ -109,7 +109,6 @@ class DetectorLite():
             GPS_Serial = serial.Serial(port=self.TTY.GPS_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)     
             sleep(.1)
             GPS_Output = ""
-            GPS_Output = GPS_Serial.readline().decode('ascii').strip()
             start = time.time()
             while not self.isValidLocation(GPS_Output) and time.time() - start < self.TIMEOUT: 
                 sleep(.1) 
