@@ -97,16 +97,16 @@ class DetectorLite():
             self.log.debug(SIM_Output)
             return SIM_Output
         except serial.SerialException as e:
-            #self.log.error('SIM, something got unplugged!') 
+            self.log.warning('SIM, something got unplugged!') 
             sleep(1)
             self.TTY.reset()
             for c in range(0, 5):
                 if self.TTY.configured:
                     break
                 self.TTY.reset()
-                self.log.warning(f'SIM, Retrying setup: {count}')
+                self.log.warning(f'SIM - Retrying setup: {count}')
             if not self.TTY.configured:
-                self.log.error('SIM, setup failed')
+                self.log.error('SIM - setup failed')
                 self.run = False
             return False
 
@@ -119,7 +119,7 @@ class DetectorLite():
             while not self.isValidLocation(GPS_Output) and time.time() - start < self.TIMEOUT: 
                 sleep(.1) 
                 try:
-                    GPS_Output = GPS_Serial.readline().decode('ascii').replace('\r', '')
+                    GPS_Output = GPS_Serial.readline().decode('ascii').replace('\r', '').replace('\n', '')
                 except UnicodeDecodeError:
                     GPS_Output = ""
             GPS_Serial.close()
@@ -128,16 +128,16 @@ class DetectorLite():
                 return GPS_Output
             return False
         except serial.SerialException as e:
-            self.log.error('GPS, something got unplugged!') 
+            self.log.warning('GPS - something got unplugged!') 
             sleep(1)
             self.TTY.reset()
             for c in range(0, 5):
                 if self.TTY.configured:
                     break
                 self.TTY.reset()
-                self.log.warning(f'GPS, Retrying setup: {count}')
+                self.log.warning(f'GPS - Retrying setup: {count}')
             if not self.TTY.configured:
-                self.log.error('GPS, setup failed')
+                self.log.error('GPS - setup failed')
                 self.run = False
             return False
 
@@ -174,4 +174,5 @@ class DetectorLite():
                 return False
             except KeyError:
                 return False
+            except TypeError
         return False 
