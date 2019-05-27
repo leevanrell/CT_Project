@@ -9,7 +9,7 @@ def create_db(DB_FILE, TABLE):
         c = conn.cursor()
         c.execute(
             f"""CREATE TABLE IF NOT EXISTS {TABLE} (
-                time text PRIMARY KEY,
+                time text,
                 mcc integer,
                 mnc integer,
                 lac integer,
@@ -22,7 +22,8 @@ def create_db(DB_FILE, TABLE):
                 satellites integer,
                 GPS_quality text,
                 altitude float,
-                altitude_units text
+                altitude_units text,
+                PRIMARY KEY (time, mcc, mnc, lac, cell_id)
             );""")
         c.execute(
             """CREATE TABLE IF NOT EXISTS towers (
