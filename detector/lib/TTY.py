@@ -42,19 +42,26 @@ class TTY():
             for count in range(0, 10):
                 self.SIM_TTY = f'/dev/ttyUSB{count}'
                 try:
-                    Serial = serial.Serial(port=self.SIM_TTY, baudrate=9600, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
-                    Serial.write(b'AT\r\n')
-                    sleep(.5)
-                    for i in range(0, 5):
-                        check = Serial.readline()
-                        self.log.debug(check)
-                        if check == b'OK\r\n':
-                            self.log.info(f'set SIM_TTY to {self.SIM_TTY}')
-                            return True
-                    Serial.close()
+                    if self.test_SIM(9600) or self.test_SIM(115200):
+                        return True
                 except serial.SerialException as e:
                     pass
         return False
+
+    def test_SIM(self, baudrate)
+        Serial = serial.Serial(port=self.SIM_TTY, baudrate=baudrate, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
+        Serial.write(b'AT\r\n')
+        sleep(.5)
+        for i in range(0, 5):
+            check = Serial.readline()
+            self.log.debug(check)
+            if check == b'OK\r\n':
+                self.log.info(f'set SIM_TTY to {self.SIM_TTY}')
+                Serial.close()
+                return True
+        Serial.close()
+        return False
+    
 
     def config_SIM(self):
         self.log.info('configuring SIM')
@@ -87,7 +94,7 @@ class TTY():
         check = Serial.readline()
         Serial.close()
         self.log.info(check)
-        if check[:1] == b'$':
+        if b'$' in check:
             self.log.info('set GPS_TTY to ' + self.GPS_TTY)
             return True
         return False
