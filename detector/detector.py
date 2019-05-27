@@ -1,4 +1,7 @@
 #!/usr/bin/python3
+"""
+
+"""
 
 import logging
 import configparser
@@ -23,10 +26,17 @@ if not os.path.exists(LOG_LOCATION):
 log = logging.getLogger()
 log.setLevel('DEBUG')
 
-LOG_FILE = LOG_LOCATION + str(datetime.date.today()) + '.log'
-file_handler = logging.FileHandler(LOG_FILE)
-file_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s'))
-log.addHandler(file_handler)
+LOG_FILE1 = LOG_LOCATION + str(datetime.date.today()) + '.info.log'
+fh1 = logging.FileHandler(LOG_FILE1)
+fh1.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s'))
+fh1.setLevel(logging.INFO)
+log.addHandler(fh1)
+
+LOG_FILE2 = LOG_LOCATION + str(datetime.date.today()) + '.debug.log'
+fh2 = logging.FileHandler(LOG_FILE2)
+fh2.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s'))
+fh2.setLevel(logging.DEBUG)
+log.addHandler(fh2)
 
 stream_handler = logging.StreamHandler()
 stream_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s'))
@@ -51,5 +61,7 @@ if __name__ == '__main__':
     DB_FILE = ROOT_LOCATION + config['DEFAULT']['DB_FILE']
     TABLE = config['DEFAULT']['TABLE']
     HTTP_SERVER = config['DEFAULT']['HTTP_SERVER']
+    if HTTP_SERVER[:-1] != '/':
+        HTTP_SERVER += '/'
 
     main()

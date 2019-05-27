@@ -1,4 +1,7 @@
 #!/usr/bin/python3
+"""
+
+"""
 
 import datetime
 import logging
@@ -13,37 +16,34 @@ from pathlib import Path
 from lib.helpers import distance, triangulate
 from lib.create_db import create_db
 
-
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 root = Path('.')
 ROOT_LOCATION = str(root.resolve()) + '/' 
-LOG_LOCATION = str(ROOT_LOCATION + 'log/')
+LOG_LOCATION = ROOT_LOCATION + 'log/'
 if not os.path.exists(LOG_LOCATION):
     os.makedirs(LOG_LOCATION)
 
 log = logging.getLogger()
 log.setLevel('DEBUG')
 
-print(ROOT_LOCATION)
-
 LOG_FILE = LOG_LOCATION + str(datetime.date.today()) + '.log'
 file_handler = logging.FileHandler(LOG_FILE)
-file_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s'))
+# file_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s'))
 log.addHandler(file_handler)
 
-stream_handler = logging.StreamHandler()
-stream_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s'))
-log.addHandler(stream_handler)
+# stream_handler = logging.StreamHandler()
+# stream_handler.setFormatter(logging.Formatter('[%(asctime)s] %(levelname)s - %(message)s'))
+# log.addHandler(stream_handler)
+
+app = Flask(__name__)
 
 @app.route("/")
 def hello():
-    self.log.debug("received hello request")
-    return datetime.datetime.now()
+    return str(datetime.datetime.now())
 
 @app.route("/update")
 def update():
-    self.log.debug("received update from sensor")
     if not request.json:
         abort(400)
 
@@ -61,13 +61,11 @@ def update():
 
 @app.route("/towers")
 def get_towers():
-    self.log.debug("received towers request")
-
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     s = f'SELECT DISTINCT mcc, mnc, lac, Cell_ID FROM {TABLE};'
     c.execute(s)
-    rows = cur.fetchall()
+    rows = c.fetchall()
 
     towers = [authenticate_towers(conn, row) for row in rows]
     conn.commit()
@@ -82,11 +80,9 @@ def authenticate_towers(conn, row):
     s = time.time()
 
     id = row[1] + '-' + row[2] + '-' + row[3] + '-' + row[4]
-    #mcc, mnc, lac, Cell_ID
     c = conn.cursor()
     c.execute(f"""SELECT DISTINCT * FROM towers WHERE id = {id};""")
     cell_info = c.fetchall()
-
     if cell_info:
         in_db = cell_info[1]
         lat = cell_info[2]
@@ -121,7 +117,6 @@ def authenticate_towers(conn, row):
     log.debug(f'{time.time() - s}')
     return doc
 
-
 if __name__ == '__main__':
     # if not os.geteuid() == 0:
     #     log.error('script must be run as root!')
@@ -134,5 +129,4 @@ if __name__ == '__main__':
     TABLE = config['DEFAULT']['TABLE']
 
     create_db(DB_FILE, TABLE)
-
-    app.run(debug=True, use_reloader=True)
+    app.run(host='0.0.0.0',port=5000,debug=True,use_reloader=True)

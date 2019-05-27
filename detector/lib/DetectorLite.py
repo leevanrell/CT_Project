@@ -1,4 +1,7 @@
 #!/usr/bin/python3
+"""
+
+"""
 
 import serial
 import os
@@ -49,30 +52,29 @@ class DetectorLite():
                                 if len(docs) > self.QUEUE_SIZE:
                                     self.log.info('making bulk upload')
                                     self.update_local_db(docs)
+                                    self.update_remote_db(docs)
                                     del docs[:]
                                 sleep(self.RATE)
                             else:
                                 self.log.debug(f"dropped bad document: {cell_tower}")
                         except ValueError as e:
                             self.log.debug(f"dropped bad document: {cell_tower} {e}")
-
             except (KeyboardInterrupt, SystemExit):
                 self.run = False
         self.update_local_db(docs)
 
     def getDocument(self, cell_tower, location):
         cell_tower = cell_tower.split(',')
-        self.log.debug(cell_tower)
         if len(cell_tower) >= 8:
             arfcn = cell_tower[1]             # Absolute radio frequency channel number
             rxl = cell_tower[2]               # Receive level (signal stregnth)
-            if(len(cell_tower) >= 11): # +CENG:0, '<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>'
+            if(len(cell_tower) >= 11):        # +CENG:0, '<arfcn>, <rxl>, <rxq>, <mcc>, <mnc>, <bsic>, <cellid>, <rla>, <txp>, <lac>, <TA>'
                 bsic = cell_tower[6]          # Base station identity code
                 Cell_ID = cell_tower[7]       # Unique Identifier
                 MCC = cell_tower[4]           # Mobile Country Code
                 MNC = cell_tower[5]           # Mobile Network Code
                 LAC = cell_tower[10]          # Location Area code
-            else: # +CENG:1+,'<arfcn>, <rxl>, <bsic>, <cellid>, <mcc>, <mnc>, <lac>'    
+            else:                             # +CENG:1+,'<arfcn>, <rxl>, <bsic>, <cellid>, <mcc>, <mnc>, <lac>'    
                 bsic = cell_tower[3]          # Base station identity code
                 Cell_ID = cell_tower[4]       # Unique Identifier
                 MCC = cell_tower[5]           # Mobile Country Code
@@ -94,7 +96,6 @@ class DetectorLite():
                 SIM_Output += SIM_Serial.readline().decode('ascii').replace('\r', '').replace('\"', '')
             SIM_Serial.close()
             SIM_Output = list(filter(None, SIM_Output.split('\n')))
-            self.log.debug(SIM_Output)
             return SIM_Output
         except serial.SerialException as e:
             self.log.warning('SIM, something got unplugged!') 
@@ -124,7 +125,6 @@ class DetectorLite():
                     GPS_Output = ""
             GPS_Serial.close()
             if self.isValidLocation(GPS_Output):
-                self.log.debug(GPS_Output)
                 return GPS_Output
             return False
         except serial.SerialException as e:
@@ -166,14 +166,7 @@ class DetectorLite():
                 if int(location.num_sats) and int(location.gps_qual) and float(location.altitude) and float(location.latitude) and float(location.longitude):
                     return True
                 return False
-            except ParseError:
-                return False
-            except ValueError:
-                return False
-            except AttributeError:
-                return False
-            except KeyError:
-                return False
-            except TypeError:
+            except Exception as e:
+                self.log.warning(f'error parsing location: {e}')
                 return False
         return False 
