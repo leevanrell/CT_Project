@@ -155,6 +155,6 @@ class DetectorLite():
             try:
                 pynmea2.parse(output)
                 return True
-            except ParseError
+            except ParseError:
                 return False
         return False 
