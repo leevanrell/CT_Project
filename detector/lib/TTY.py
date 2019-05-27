@@ -48,7 +48,7 @@ class TTY():
                     pass
         return False
 
-    def test_SIM(self, baudrate)
+    def test_SIM(self, baudrate):
         Serial = serial.Serial(port=self.SIM_TTY, baudrate=baudrate, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)
         Serial.write(b'AT\r\n')
         sleep(.5)
@@ -61,7 +61,6 @@ class TTY():
                 return True
         Serial.close()
         return False
-    
 
     def config_SIM(self):
         self.log.info('configuring SIM')
