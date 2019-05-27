@@ -162,7 +162,7 @@ class DetectorLite():
         check = output.split(',')
         if len(output) != 0 and len(check) >= 6 and check[0] == '$GPGGA':
             try:
-                l = pynmea2.parse(output)
+                location = pynmea2.parse(output)
                 if int(location.num_sats) and int(location.gps_qual):
                     return True
                 return False
