@@ -91,7 +91,6 @@ class TTY():
         sleep(.5)
         check = Serial.readline()
         Serial.close()
-        self.log.info(check)
         if b'$' in check:
             self.log.info('set GPS_TTY to ' + self.GPS_TTY)
             return True

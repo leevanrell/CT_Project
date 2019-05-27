@@ -38,12 +38,12 @@ class DetectorLite():
                 location = self.getLocation()
                 self.log.debug(cell_towers)
                 self.log.debug(location)
-                if location[:5] != "error" and cell_towers[:5] != "error":
+                if location and cell_towers:
                     location = pynmea2.parse(location)
                     for cell_tower in cell_towers:
                         try:
                             document = self.getDocument(cell_tower, location)
-                            if document[11] != 0 and document[5] > 7 and document[5] != 255: 
+                            if document and document[11] != 0 and document[5] > 7 and document[5] != 255: 
                                 docs.append(document)
                                 self.log.info('added document to queue')
                                 #self.log.info(document)
@@ -54,7 +54,7 @@ class DetectorLite():
                             else:
                                 self.log.debug(f"dropped bad document: {document['GPS_quality']} {document['rxl']} {document['Cell_ID']}")
                         except ValueError as e:
-                            self.log.debug(f"dropped bad docuemnt: {cell_tower}, {location}")
+                            self.log.debug(f"dropped bad document: {cell_tower}, {location}")
 
             except (KeyboardInterrupt, SystemExit):
                 self.run = False
@@ -77,7 +77,8 @@ class DetectorLite():
                 MCC = cell_tower[5]           # Mobile Country Code
                 MNC = cell_tower[6]           # Mobile Network Code
                 LAC = cell_tower[7][:-2]      # Location Area code
-        return (time.strftime('%m-%d-%y %H:%M:%S'),int(MCC),int(MNC),int(LAC, 16),int(Cell_ID, 16),int(rxl),arfcn,bsic,location.latitude,location.longitude,int(location.num_sats),int(location.gps_qual),location.altitude,location.altitude_units)
+            return (time.strftime('%m-%d-%y %H:%M:%S'),int(MCC),int(MNC),int(LAC, 16),int(Cell_ID, 16),int(rxl),arfcn,bsic,location.latitude,location.longitude,int(location.num_sats),int(location.gps_qual),location.altitude,location.altitude_units)
+        return False
 
     def getCell(self):
         try:
@@ -102,14 +103,14 @@ class DetectorLite():
             if not self.TTY.configured:
                 self.log.error('SIM, setup failed')
                 self.run = False
-            return "error"
+            return False
 
     def getLocation(self):
         try:
             GPS_Serial = serial.Serial(port=self.TTY.GPS_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)     
             sleep(.1)
             GPS_Output = ""
-            GPS_Output = GPS_Serial.readline().decode('ascii')
+            GPS_Output = GPS_Serial.readline().decode('ascii').strip()
             start = time.time()
             while not self.isValidLocation(GPS_Output) and time.time() - start < self.TIMEOUT: 
                 sleep(.1) 
@@ -117,7 +118,7 @@ class DetectorLite():
             GPS_Serial.close()
             if self.isValidLocation(GPS_Output):
                 return GPS_Output
-            return 'error: bad gps data'
+            return False
         except serial.SerialException as e:
             self.log.error('GPS, something got unplugged!') 
             sleep(1) # why sleep here?
@@ -130,7 +131,7 @@ class DetectorLite():
             if not self.TTY.configured:
                 self.log.error('GPS, setup failed')
                 self.run = False
-            return 'error'
+            return False
 
     def update_local_db(self, docs):
         conn = sqlite3.connect(self.DB_FILE)
