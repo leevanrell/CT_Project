@@ -50,9 +50,11 @@ class DetectorLite():
                                      del docs[:]
                                 sleep(self.RATE)
                             else:
-                                self.log.debug(f"dropped bad document: {cell_tower}, {location}")
+                                pass
+                                #self.log.debug(f"dropped bad document: {cell_tower}, {location}")
                         except ValueError as e:
-                            self.log.debug(f"dropped bad document: {cell_tower}, {location}")
+                            #self.log.debug(f"dropped bad document: {cell_tower}, {location}")
+                            pass
 
             except (KeyboardInterrupt, SystemExit):
                 self.run = False
@@ -146,8 +148,6 @@ class DetectorLite():
             self.log.warning('error: http error')
         except requests.Timeout:
             self.log.warning('error: timeout error')
-        except Exception as e:
-            self.log.warning(f'error: posting data {e}')
 
     def isValidLocation(self, output):
         check = output.split(',')
