@@ -9,6 +9,7 @@ import sys
 import socket
 import pynmea2
 import datetime
+import requests
 import time
 import sqlite3
 from time import sleep
@@ -26,7 +27,7 @@ class DetectorLite():
         self.HTTP_SERVER = HTTP_SERVER
         self.DB_FILE = DB_FILE
         self.TABLE = TABLE
-        self.TIMEOUT = 5
+        self.TIMEOUT = 1
         self.RATE = 0.5
         self.QUEUE_SIZE = 10
         if not self.TTY.configured:
@@ -56,10 +57,11 @@ class DetectorLite():
                                     del docs[:]
                                 sleep(self.RATE)
                             else:
-                                self.log.debug(f"dropped bad document: {cell_tower}")
+                                self.log.debug(f'dropped bad document: {cell_tower}')
                         except ValueError as e:
-                            self.log.debug(f"dropped bad document: {cell_tower} {e}")
+                            self.log.debug(f'dropped bad document: {cell_tower} {e}')
             except (KeyboardInterrupt, SystemExit):
+                self.log.info('detected KeyboardInterrupt, quiting..')
                 self.run = False
         self.update_local_db(docs)
 
@@ -115,14 +117,14 @@ class DetectorLite():
         try:
             GPS_Serial = serial.Serial(port=self.TTY.GPS_TTY, baudrate=115200, parity=serial.PARITY_NONE, stopbits=serial.STOPBITS_ONE, bytesize=serial.EIGHTBITS, timeout=0)     
             sleep(.1)
-            GPS_Output = ""
+            GPS_Output = ''
             start = time.time()
             while not self.isValidLocation(GPS_Output) and time.time() - start < self.TIMEOUT: 
                 sleep(.1) 
                 try:
                     GPS_Output = GPS_Serial.readline().decode('ascii').replace('\r', '').replace('\n', '')
                 except UnicodeDecodeError:
-                    GPS_Output = ""
+                    GPS_Output = ''
             GPS_Serial.close()
             if self.isValidLocation(GPS_Output):
                 return GPS_Output
