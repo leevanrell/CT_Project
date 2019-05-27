@@ -91,7 +91,7 @@ class DetectorLite():
             sleep(.1)  
             SIM_Output = ''
             while SIM_Serial.inWaiting() > 0:
-                SIM_Output += SIM_Serial.readline().decode('ascii').strip('\"').strip('\r')
+                SIM_Output += SIM_Serial.readline().decode('ascii').replace('\r', '').replace('\"', '')
             SIM_Serial.close()
             SIM_Output = list(filter(None, SIM_Output.split('\n')))
             self.log.debug(SIM_Output)
@@ -119,7 +119,7 @@ class DetectorLite():
             while not self.isValidLocation(GPS_Output) and time.time() - start < self.TIMEOUT: 
                 sleep(.1) 
                 try:
-                    GPS_Output = GPS_Serial.readline().decode('ascii').strip('\r')
+                    GPS_Output = GPS_Serial.readline().decode('ascii').replace('\r', '')
                 except UnicodeDecodeError:
                     GPS_Output = ""
             GPS_Serial.close()
