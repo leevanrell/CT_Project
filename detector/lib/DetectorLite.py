@@ -37,7 +37,9 @@ class DetectorLite():
                 cell_towers = self.getCell()
                 location = self.getLocation()
                 if location and cell_towers:
+                    self.log.debug('d')
                     location = pynmea2.parse(location)
+                    self.log.debug('t')
                     for cell_tower in cell_towers:
                         try:
                             document = self.getDocument(cell_tower, location)
@@ -50,7 +52,7 @@ class DetectorLite():
                                      del docs[:]
                                 sleep(self.RATE)
                             else:
-                                self.log.debug(f"dropped bad document: {document}")
+                                self.log.debug(f"dropped bad document: {cell_tower}, {location}")
                         except ValueError as e:
                             self.log.debug(f"dropped bad document: {cell_tower}, {location}")
 
