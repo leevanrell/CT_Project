@@ -52,7 +52,7 @@ class DetectorLite():
                                      del doc[:]
                                 sleep(self.RATE)
                             else:
-                                self.log.debug(f"dropped bad document: {document['GPS_quality']} {document['rxl']} {document['Cell_ID']}")
+                                self.log.debug(f"dropped bad document: {document}")
                         except ValueError as e:
                             self.log.debug(f"dropped bad document: {cell_tower}, {location}")
 
