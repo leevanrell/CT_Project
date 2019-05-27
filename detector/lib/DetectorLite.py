@@ -93,10 +93,11 @@ class DetectorLite():
             while SIM_Serial.inWaiting() > 0:
                 SIM_Output += SIM_Serial.readline().decode('ascii').strip('\r')
             SIM_Serial.close()
+            self.log.debug(SIM_Output)
             SIM_Output = SIM_Output.split('\n')[4:11] 
             return SIM_Output
         except serial.SerialException as e:
-            self.log.error('SIM, something got unplugged!') 
+            #self.log.error('SIM, something got unplugged!') 
             sleep(1)
             self.TTY.reset()
             for c in range(0, 5):
