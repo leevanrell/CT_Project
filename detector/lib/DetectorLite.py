@@ -34,12 +34,10 @@ class DetectorLite():
         docs = []
         while self.run:
             try:
-                cell_towers = self.getCell()
                 location = self.getLocation()
+                cell_towers = self.getCell()
                 if location and cell_towers:
-                    self.log.debug('d')
                     location = pynmea2.parse(location)
-                    self.log.debug('t')
                     for cell_tower in cell_towers:
                         try:
                             document = self.getDocument(cell_tower, location)
@@ -151,7 +149,12 @@ class DetectorLite():
         except Exception as e:
             self.log.warning(f'error: posting data {e}')
 
-
     def isValidLocation(self, output):
         check = output.split(',')
-        return len(output) != 0 and check[0] == '$GPGGA' and len(check) >= 6 and len(check[6]) != 0 and int(check[6]) != 0 
+        if len(output) != 0 and len(check) >= 6 and check[0] == '$GPGGA':
+            try:
+                pynmea2.parse(output)
+                return True
+            except ParseError
+                return False
+        return False 
