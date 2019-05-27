@@ -174,5 +174,6 @@ class DetectorLite():
                 return False
             except KeyError:
                 return False
-            except TypeError
+            except TypeError:
+                return False
         return False 
