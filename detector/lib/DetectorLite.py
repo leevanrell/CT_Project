@@ -113,7 +113,7 @@ class DetectorLite():
             start = time.time()
             while not self.isValidLocation(GPS_Output) and time.time() - start < self.TIMEOUT: 
                 sleep(.1) 
-                GPS_Output = GPS_Serial.readline()
+                GPS_Output = GPS_Serial.readline().decode('ascii').strip()
             self.log.debug(f'gps {GPS_Output}')
             GPS_Serial.close()
             if self.isValidLocation(GPS_Output):
